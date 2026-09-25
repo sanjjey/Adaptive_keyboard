@@ -4,9 +4,8 @@ import { SimulationControls } from './components/SimulationControls';
 import { ConfigPanel } from './components/ConfigPanel';
 import { Analytics } from './components/Analytics';
 import { KeyboardRLAgent } from './rl/KeyboardRLAgent';
-import { TransitionAgent } from './rl/TransitionAgent';
 import { TyperSimulator } from './rl/TyperSimulator';
-import type { RLParams, TransitionRLParams, TouchPoint, TypingStats, TyperProfile } from './rl/types';
+import type { RLParams, TouchPoint, TypingStats, TyperProfile } from './rl/types';
 import { PRESETS } from './rl/TyperSimulator';
 import { Keyboard as KeyboardIcon, HelpCircle, Sparkles, Smartphone, Tablet, Laptop as LaptopIcon, RotateCcw, Save, Users } from 'lucide-react';
 
@@ -167,52 +166,6 @@ const generateSyntheticPhrase = (): string => {
 };
 
 
-const generateHybridPhrase = (): string => {
-  const standardWords = [
-    "watch", "assistant", "competent", "weather", "pleasant", "critical", "review", "coupon", "required", "questions",
-    "answered", "learning", "converges", "quickly", "dynamic", "weights", "improve", "accuracy", "assistive", "technology",
-    "tremors", "quick", "brown", "fox", "jumps", "lazy", "dog", "temperature", "falling", "const", "rate", "equals",
-    "bayesian", "decoding", "combines", "touch", "text", "priors", "second", "half", "minimum", "wage", "raised",
-    "yesterday", "playing", "game", "chess", "seat", "waiting", "room", "going", "party", "tonight", "bank", "open",
-    "check", "spam", "folder", "regularly", "cat", "sat", "warm", "mat", "meet", "tomorrow", "morning", "beautiful",
-    "singing", "voice", "send", "email", "domain", "enter", "password", "press", "red", "button", "emergency", "stop",
-    "contain", "characters", "would", "like", "cup", "hot", "coffee", "train", "arrives", "platform", "resolve", "conflict"
-  ];
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz';
-  const rareLetters = ['q', 'z', 'x', 'j', 'k'];
-  const symbols = [',', '.', '?', '!'];
-
-  const words: string[] = [];
-  const numWords = 6;
-
-  for (let w = 0; w < numWords; w++) {
-    const typeRoll = Math.random();
-    if (typeRoll < 0.5) {
-      // 50% chance: standard English word
-      const word = standardWords[Math.floor(Math.random() * standardWords.length)];
-      words.push(word);
-    } else if (typeRoll < 0.8) {
-      // 30% chance: synthetic random word containing rare letters
-      let word = "";
-      const len = Math.floor(Math.random() * 4) + 3; // Length 3-6
-      for (let c = 0; c < len; c++) {
-        if (Math.random() < 0.4) {
-          word += rareLetters[Math.floor(Math.random() * rareLetters.length)];
-        } else {
-          word += alphabet[Math.floor(Math.random() * alphabet.length)];
-        }
-      }
-      words.push(word);
-    } else {
-      // 20% chance: word with a trailing symbol overlay
-      const baseWord = standardWords[Math.floor(Math.random() * standardWords.length)];
-      const sym = symbols[Math.floor(Math.random() * symbols.length)];
-      words.push(baseWord + sym);
-    }
-  }
-
-  return words.join(' ');
-};
 
 
 const DEFAULT_SPATIAL_PARAMS: RLParams = {
@@ -224,12 +177,7 @@ const DEFAULT_SPATIAL_PARAMS: RLParams = {
   lmWeight: 0.4, // Bayesian Prior Weight
 };
 
-const DEFAULT_TRANSITION_PARAMS: TransitionRLParams = {
-  learningRate: 0.3,
-  discountFactor: 0.8,
-  epsilon: 0.15,
-  switchPenalty: 20,
-};
+
 
 const DEFAULT_STATS: TypingStats = {
   wpm: 0,
@@ -319,22 +267,16 @@ const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
 export default function App() {
   // 1. Core Agent Instances (persistent refs)
   const spatialAgentRef = useRef<KeyboardRLAgent | null>(null);
-  const transitionAgentRef = useRef<TransitionAgent | null>(null);
 
   // Initialize agents once
   if (!spatialAgentRef.current) {
     spatialAgentRef.current = new KeyboardRLAgent(DEFAULT_SPATIAL_PARAMS);
   }
-  if (!transitionAgentRef.current) {
-    transitionAgentRef.current = new TransitionAgent(DEFAULT_TRANSITION_PARAMS);
-  }
 
   const spatialAgent = spatialAgentRef.current;
-  const transitionAgent = transitionAgentRef.current;
 
   // 2. State Hooks
   const [spatialParams, setSpatialParams] = useState<RLParams>(DEFAULT_SPATIAL_PARAMS);
-  const [transitionParams, setTransitionParams] = useState<TransitionRLParams>(DEFAULT_TRANSITION_PARAMS);
   const [currentProfile, setCurrentProfile] = useState<TyperProfile>(PRESETS[0]);
   const [stats, setStats] = useState<TypingStats>(DEFAULT_STATS);
   
@@ -345,9 +287,9 @@ export default function App() {
   const [showVoronoi, setShowVoronoi] = useState(true);
   const [showVectors, setShowVectors] = useState(true);
   const [showTouches, setShowTouches] = useState(true);
-  const [showOverlays, setShowOverlays] = useState(false);
+  const [showOverlays, _setShowOverlays] = useState(false);
   const [isSmoothingEnabled, setIsSmoothingEnabled] = useState(false);
-  const [isProfileShifting, setIsProfileShifting] = useState(false);
+
   const [deviceMode, setDeviceMode] = useState<'mobile' | 'tablet' | 'laptop'>('laptop');
   const [isProductDemo, setIsProductDemo] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
@@ -381,18 +323,12 @@ export default function App() {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
 
-  // Track active transition state
-  const [transitionAction, setTransitionAction] = useState<number>(0); // 0: None, 1: Row, 2: Overlays
   const [simulatedTimeMs, setSimulatedTimeMs] = useState(0);
 
   // Sync parameters back to agents when states change
   useEffect(() => {
     spatialAgent.params = spatialParams;
   }, [spatialParams]);
-
-  useEffect(() => {
-    transitionAgent.params = transitionParams;
-  }, [transitionParams]);
 
   // Sync device modes and bounds to KeyboardRLAgent
   useEffect(() => {
@@ -512,13 +448,7 @@ export default function App() {
   // ──────────────────────────────────────────────────────────────────────
 
 
-  // Sync active layout row display with Q-learning predictions
-  useEffect(() => {
-    // Action 1: Show top numeric row
-    spatialAgent.setNumericRowVisible(transitionAction === 1);
-    // Action 2: Show overlays
-    setShowOverlays(transitionAction === 2);
-  }, [transitionAction]);
+
 
   // Scroll chat to bottom when messages update
   useEffect(() => {
@@ -551,10 +481,7 @@ export default function App() {
           setTargetText(generateSyntheticPhrase());
           setInputText('');
           setCharIndex(0);
-        } else if (selectedTextOption === 'hybrid') {
-          setTargetText(generateHybridPhrase());
-          setInputText('');
-          setCharIndex(0);
+
         } else {
           setIsRunning(false);
         }
@@ -564,12 +491,7 @@ export default function App() {
 
   // 3. Typing Logic (Process Keystroke)
   const processKeystroke = (targetChar: string, x: number, y: number, manualSwitch = false) => {
-    // Cycle user profile every 150 keystrokes if dynamic shifting is active
-    if (isProfileShifting && stats.totalKeystrokes > 0 && stats.totalKeystrokes % 150 === 0 && charIndex === 0) {
-      const currentIdx = PRESETS.findIndex((p) => p.id === currentProfile.id);
-      const nextIdx = (currentIdx + 1) % PRESETS.length;
-      setCurrentProfile(PRESETS[nextIdx]);
-    }
+
 
     // Determine which key is matched
     const classifiedId = spatialAgent.classifyTouch(x, y);
@@ -607,15 +529,7 @@ export default function App() {
     const newSimTime = simulatedTimeMs + latency;
     setSimulatedTimeMs(newSimTime);
 
-    // C. Process Temporal Transition RL Agent
-    const historyBefore = targetText.slice(Math.max(0, charIndex - 2), charIndex);
-    const transitionRes = transitionAgent.processKeystroke(historyBefore, targetChar, manualSwitch);
-
-    // Update active layout based on Q-learning decision for NEXT character
-    // Force transition action to 0 (Alphabet Mode) - Numericals completely disabled
-    setTransitionAction(0);
-
-    // D. Record Touch Points
+    // C. Record Touch Points
     const newTouch: TouchPoint = {
       x,
       y,
@@ -633,7 +547,7 @@ export default function App() {
       { key: classifiedId, x, y, timestamp: Date.now() },
     ];
 
-    // E. Stats updates
+    // D. Stats updates
     setStats((prev) => {
       const totalK = prev.totalKeystrokes + 1;
       const correctK = prev.correctKeystrokes + (isCorrect ? 1 : 0);
@@ -644,7 +558,7 @@ export default function App() {
       const minutes = newSimTime / 60000;
       const wpm = minutes > 0 ? (correctK / 5) / minutes : 0;
 
-      const switchesSaved = prev.switchesSaved + (transitionRes.savedSwitch ? 1 : 0);
+      const switchesSaved = prev.switchesSaved;
       const manualSwitches = prev.manualSwitches + (manualSwitch ? 1 : 0);
 
       return {
@@ -746,9 +660,7 @@ export default function App() {
     } else if (selectedTextOption === 'synthetic') {
       nextPhrase = generateSyntheticPhrase();
       setTargetText(nextPhrase);
-    } else if (selectedTextOption === 'hybrid') {
-      nextPhrase = generateHybridPhrase();
-      setTargetText(nextPhrase);
+
     } else if (!isFreeMode) {
       nextPhrase = selectedTextOption === 'custom' ? customText : targetText;
       setTargetText(nextPhrase);
@@ -788,55 +700,25 @@ export default function App() {
 
     const nextChar = currentText[charIndex];
     let keyId = nextChar === ' ' ? 'space' : nextChar.toLowerCase();
-    
-    // Map punctuation to parent overlay keys if layout actions allow
-    if (SYMBOL_OVERLAYS_REVERSE[keyId]) {
-      const parentKeyId = SYMBOL_OVERLAYS_REVERSE[keyId];
-      // If we are showing overlays (Action 2), target the parent key's physical position
-      if (transitionAction === 2) {
-        keyId = parentKeyId;
-      }
-    }
 
     const targetKey = spatialAgent.keys.find((k) => k.id === keyId);
 
-    // Numerical switching is completely disabled
-    const needsLayoutSwitch = false;
-
     const simulator = new TyperSimulator(currentProfile);
 
-    // Define simulation step sequence
+    // Standard keystroke tap
     const executeSimStep = () => {
-      if (needsLayoutSwitch) {
-        // Step 1: Click the "mode/123" button first
-        const modeKey = spatialAgent.keys.find((k) => k.id === 'mode')!;
-        const touch = simulator.simulateTouch(modeKey);
-        
-        // Tap "mode"
-        processKeystroke('mode', touch.x, touch.y, true);
-
-        // Instantly force layout to active numeric and schedule character tap next
-        setTransitionAction(1);
-      } else {
-        // Standard keystroke tap
-        let touchTargetKey = targetKey;
-        if (!touchTargetKey) {
-          // Fallback to random letter if character isn't physically on our simple layout
-          touchTargetKey = spatialAgent.keys.find((k) => k.id === 'e')!;
-        }
-
-        const touch = simulator.simulateTouch(touchTargetKey);
-        processKeystroke(nextChar, touch.x, touch.y, false);
+      let touchTargetKey = targetKey;
+      if (!touchTargetKey) {
+        touchTargetKey = spatialAgent.keys.find((k) => k.id === 'e')!;
       }
+      const touch = simulator.simulateTouch(touchTargetKey);
+      processKeystroke(nextChar, touch.x, touch.y, false);
     };
 
-    // Calculate simulation delay based on speed factor
-    const baseDelay = needsLayoutSwitch ? 300 : 250;
-    const intervalTime = Math.max(10, baseDelay / simSpeed);
-
+    const intervalTime = Math.max(10, 250 / simSpeed);
     const timer = setTimeout(executeSimStep, intervalTime);
     return () => clearTimeout(timer);
-  }, [isRunning, charIndex, targetText, customText, selectedTextOption, simSpeed, transitionAction]);
+  }, [isRunning, charIndex, targetText, customText, selectedTextOption, simSpeed]);
 
   // 5. Manual Keyboard Tap Handler
   const handleKeyboardTap = (x: number, y: number) => {
@@ -956,7 +838,6 @@ export default function App() {
     
     let tempRecentTouches = [...recentTouches];
     let checkpoints: any[] = [];
-    let localTransitionAction = transitionAction;
 
     for (let step = 0; step < iterations; step++) {
       // Loop text if completed during training
@@ -970,10 +851,7 @@ export default function App() {
           activePhrase = generateSyntheticPhrase();
           tempInputText = "";
           tempCharIndex = 0;
-        } else if (selectedTextOption === 'hybrid') {
-          activePhrase = generateHybridPhrase();
-          tempInputText = "";
-          tempCharIndex = 0;
+
         } else {
           tempCharIndex = 0;
         }
@@ -1005,16 +883,6 @@ export default function App() {
       const wasDouble = tempCharIndex > 0 && activePhrase[tempCharIndex] === activePhrase[tempCharIndex - 1];
       const latency = simulator.calculateKeystrokeLatency(isCorrect, false, wasDouble);
       tempTimeMs += latency;
-
-      const historyBefore = activePhrase.slice(Math.max(0, tempCharIndex - 2), tempCharIndex);
-      const transitionRes = transitionAgent.processKeystroke(historyBefore, char, false);
-      
-      // Force local transition action to 0 - Numericals completely disabled
-      localTransitionAction = 0;
-
-      if (transitionRes.savedSwitch) {
-        switchesSaved++;
-      }
 
       tempInputText += char;
       tempCharIndex++;
@@ -1053,7 +921,7 @@ export default function App() {
       }
     }
 
-    setTransitionAction(localTransitionAction);
+
 
     setCharIndex(tempCharIndex);
     setSimulatedTimeMs(tempTimeMs);
@@ -1081,13 +949,11 @@ export default function App() {
   const handleReset = () => {
     setIsRunning(false);
     spatialAgent.resetLayout();
-    transitionAgent.reset();
     setInputText('');
     setCharIndex(0);
     setRecentTouches([]);
     setStats(DEFAULT_STATS);
     setMetricHistory([]);
-    setTransitionAction(0);
     setSimulatedTimeMs(0);
     setMackenzieIndex(0);
     // Reset backspace-as-reward system
@@ -1098,15 +964,12 @@ export default function App() {
       setTargetText(MACKENZIE_PHRASES[0]);
     } else if (selectedTextOption === 'synthetic') {
       setTargetText(generateSyntheticPhrase());
-    } else if (selectedTextOption === 'hybrid') {
-      setTargetText(generateHybridPhrase());
     }
   };
 
 
   const handleResetParams = () => {
     setSpatialParams(DEFAULT_SPATIAL_PARAMS);
-    setTransitionParams(DEFAULT_TRANSITION_PARAMS);
   };
 
   const handleTextChange = (text: string) => {
@@ -1116,20 +979,13 @@ export default function App() {
       setTargetText(MACKENZIE_PHRASES[0]);
     } else if (text === 'synthetic') {
       setTargetText(generateSyntheticPhrase());
-    } else if (text === 'hybrid') {
-      setTargetText(generateHybridPhrase());
     } else if (text !== 'custom') {
       setTargetText(text);
     }
     handleReset();
   };
 
-  // Read active transition text representation
-  const getActionName = () => {
-    if (transitionAction === 1) return 'NUMERIC ROW ACTIVE';
-    if (transitionAction === 2) return 'OVERLAY SHORTCUTS';
-    return 'ALPHABET MODE';
-  };
+
 
   const activeTestText = selectedTextOption === 'custom' ? customText : targetText;
 
@@ -1583,7 +1439,7 @@ export default function App() {
         {/* Right Side: Simulation & Parameter Consoles */}
         <div className="flex flex-col gap-6">
           {/* Analytics Panel */}
-          <Analytics stats={stats} history={metricHistory} currentActionName={getActionName()} />
+          <Analytics stats={stats} history={metricHistory} />
 
           {/* Backspace Correction Counter */}
           {backspaceCorrectionCount > 0 && (
@@ -1616,16 +1472,13 @@ export default function App() {
               setCustomText(t);
               handleReset();
             }}
-            isProfileShifting={isProfileShifting}
-            onProfileShiftingChange={setIsProfileShifting}
+
           />
 
           {/* Hyperparameter configurator */}
           <ConfigPanel
             spatialParams={spatialParams}
             onSpatialParamsChange={setSpatialParams}
-            transitionParams={transitionParams}
-            onTransitionParamsChange={setTransitionParams}
             onResetToDefaults={handleResetParams}
           />
         </div>

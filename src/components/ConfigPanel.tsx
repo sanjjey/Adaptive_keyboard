@@ -1,32 +1,21 @@
 import React from 'react';
-import type { RLParams, TransitionRLParams } from '../rl/types';
+import type { RLParams } from '../rl/types';
 import { Sliders, RefreshCw } from 'lucide-react';
 
 interface ConfigPanelProps {
   spatialParams: RLParams;
   onSpatialParamsChange: (params: RLParams) => void;
-  transitionParams: TransitionRLParams;
-  onTransitionParamsChange: (params: TransitionRLParams) => void;
   onResetToDefaults: () => void;
 }
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({
   spatialParams,
   onSpatialParamsChange,
-  transitionParams,
-  onTransitionParamsChange,
   onResetToDefaults,
 }) => {
   const handleSpatialChange = (key: keyof RLParams, val: number) => {
     onSpatialParamsChange({
       ...spatialParams,
-      [key]: val,
-    });
-  };
-
-  const handleTransitionChange = (key: keyof TransitionRLParams, val: number) => {
-    onTransitionParamsChange({
-      ...transitionParams,
       [key]: val,
     });
   };
@@ -170,87 +159,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
         </div>
       </div>
 
-      {/* Transition RL Agent (Q-Learning) */}
-      <div className="flex flex-col gap-4 mt-2">
-        <h3 className="text-xs uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-900 pb-1">
-          Transition Q-Agent
-        </h3>
-
-        {/* Q Learning Rate */}
-        <div className="form-group">
-          <div className="flex justify-between text-xs font-mono">
-            <span>Q-Learning Rate (α_t)</span>
-            <span className="text-cyan-400 font-semibold">{transitionParams.learningRate.toFixed(2)}</span>
-          </div>
-          <input
-            type="range"
-            min="0.05"
-            max="0.9"
-            step="0.05"
-            value={transitionParams.learningRate}
-            onChange={(e) => handleTransitionChange('learningRate', parseFloat(e.target.value))}
-            className="range-slider"
-            style={{ '--accent-purple': 'var(--accent-teal)' } as React.CSSProperties}
-          />
-        </div>
-
-        {/* Discount Factor */}
-        <div className="form-group">
-          <div className="flex justify-between text-xs font-mono">
-            <span>Discount (γ)</span>
-            <span className="text-cyan-400 font-semibold">{transitionParams.discountFactor.toFixed(2)}</span>
-          </div>
-          <input
-            type="range"
-            min="0.1"
-            max="0.99"
-            step="0.05"
-            value={transitionParams.discountFactor}
-            onChange={(e) => handleTransitionChange('discountFactor', parseFloat(e.target.value))}
-            className="range-slider"
-            style={{ '--accent-purple': 'var(--accent-teal)' } as React.CSSProperties}
-          />
-        </div>
-
-        {/* Exploration Epsilon */}
-        <div className="form-group">
-          <div className="flex justify-between text-xs font-mono">
-            <span>Exploration (ε)</span>
-            <span className="text-cyan-400 font-semibold">{(transitionParams.epsilon * 100).toFixed(0)}%</span>
-          </div>
-          <input
-            type="range"
-            min="0.0"
-            max="0.7"
-            step="0.05"
-            value={transitionParams.epsilon}
-            onChange={(e) => handleTransitionChange('epsilon', parseFloat(e.target.value))}
-            className="range-slider"
-            style={{ '--accent-purple': 'var(--accent-teal)' } as React.CSSProperties}
-          />
-        </div>
-
-        {/* Switch Penalty Cost */}
-        <div className="form-group">
-          <div className="flex justify-between text-xs font-mono">
-            <span>Switch Penalty Cost</span>
-            <span className="text-cyan-400 font-semibold">-{transitionParams.switchPenalty}</span>
-          </div>
-          <input
-            type="range"
-            min="5"
-            max="50"
-            step="5"
-            value={transitionParams.switchPenalty}
-            onChange={(e) => handleTransitionChange('switchPenalty', parseInt(e.target.value))}
-            className="range-slider"
-            style={{ '--accent-purple': 'var(--accent-teal)' } as React.CSSProperties}
-          />
-          <div className="text-[10px] text-slate-500 leading-normal">
-            Penalty assigned in the Q-table when a manual layout toggle is forced.
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

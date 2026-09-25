@@ -16,8 +16,7 @@ interface SimulationControlsProps {
   onTextChange: (text: string) => void;
   customText: string;
   onCustomTextChange: (text: string) => void;
-  isProfileShifting: boolean;
-  onProfileShiftingChange: (val: boolean) => void;
+
 }
 
 const PRESET_TEXTS = [
@@ -29,10 +28,7 @@ const PRESET_TEXTS = [
     name: 'Synthetic Random (Varied Characters)',
     text: 'synthetic',
   },
-  {
-    name: 'Hybrid Corpus (Mixed Style & Characters)',
-    text: 'hybrid',
-  },
+
   {
     name: 'Alpha Typing Test',
     text: 'hello this is a simple keyboard typing test to verify adaptive reinforcement learning layout performance',
@@ -68,8 +64,7 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   onTextChange,
   customText,
   onCustomTextChange,
-  isProfileShifting,
-  onProfileShiftingChange,
+
 }) => {
   const [fastTrainIters, setFastTrainIters] = React.useState<number>(250);
   return (
@@ -102,15 +97,7 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-2 mt-2 cursor-pointer text-xs text-slate-400 hover:text-white" title="Cyles user profile every 150 keystrokes to test online learning rate re-annealing">
-          <input
-            type="checkbox"
-            checked={isProfileShifting}
-            onChange={(e) => onProfileShiftingChange(e.target.checked)}
-            className="accent-purple-600"
-          />
-          Enable Dynamic Profile Shifting (Cycle mid-run)
-        </label>
+
       </div>
 
       {/* Typing Test Text Selection */}

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { TypingStats } from '../rl/types';
-import { Zap, AlertTriangle, Cpu, TrendingUp } from 'lucide-react';
+import { Zap, AlertTriangle, TrendingUp } from 'lucide-react';
 
 interface MetricPoint {
   wpm: number;
@@ -12,10 +12,9 @@ interface MetricPoint {
 interface AnalyticsProps {
   stats: TypingStats;
   history: MetricPoint[];
-  currentActionName: string;
 }
 
-export const Analytics: React.FC<AnalyticsProps> = ({ stats, history, currentActionName }) => {
+export const Analytics: React.FC<AnalyticsProps> = ({ stats, history }) => {
   // SVG Chart helper
   const renderLineChart = (
     data: number[],
@@ -130,17 +129,6 @@ export const Analytics: React.FC<AnalyticsProps> = ({ stats, history, currentAct
           </div>
         </div>
 
-        <div className="p-3 bg-slate-950/60 border border-slate-900 rounded-xl flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400">
-            <Cpu size={20} />
-          </div>
-          <div>
-            <div className="text-[10px] uppercase text-slate-500 font-semibold">Active Mode</div>
-            <div className="text-xs font-semibold text-white mt-1 uppercase tracking-wider font-mono">
-              {currentActionName}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Charts Section */}
