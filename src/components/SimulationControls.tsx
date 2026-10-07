@@ -1,7 +1,7 @@
 import React from 'react';
-import type { TyperProfile } from '../rl/types';
+import type { TyperProfile, RLAlgorithmType } from '../rl/types';
 import { PRESETS } from '../rl/TyperSimulator';
-import { Play, Pause, RotateCcw, Sparkles } from 'lucide-react';
+import { Play, Pause, RotateCcw, Sparkles, Cpu } from 'lucide-react';
 
 interface SimulationControlsProps {
   currentProfile: TyperProfile;
@@ -16,7 +16,8 @@ interface SimulationControlsProps {
   onTextChange: (text: string) => void;
   customText: string;
   onCustomTextChange: (text: string) => void;
-
+  rlAlgorithm?: RLAlgorithmType;
+  onAlgorithmChange?: (algo: RLAlgorithmType) => void;
 }
 
 const PRESET_TEXTS = [
@@ -64,7 +65,8 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   onTextChange,
   customText,
   onCustomTextChange,
-
+  rlAlgorithm,
+  onAlgorithmChange,
 }) => {
   const [fastTrainIters, setFastTrainIters] = React.useState<number>(250);
   return (
@@ -78,35 +80,62 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
 
       {/* Profile Selector */}
       <div className="flex flex-col gap-2">
-        <label className="form-label">Select Typer Profile</label>
-        <div className="grid grid-cols-2 gap-2">
-          {PRESETS.map((prof) => (
-            <button
-              key={prof.id}
-              onClick={() => onProfileChange(prof)}
-              className={`p-3 rounded-xl border text-left transition-all ${
-                currentProfile.id === prof.id
-                  ? 'border-purple-500 bg-purple-500/10 text-white'
-                  : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700'
-              }`}
-            >
-              <div className="font-semibold text-sm">{prof.name}</div>
-              <div className="text-[10px] mt-1 line-clamp-2 text-slate-500 leading-tight">
-                {prof.description}
-              </div>
-            </button>
-          ))}
+        <label className="form-label text-slate-300 font-semibold text-xs uppercase tracking-wider">Select Typer Profile</label>
+        <div className="grid grid-cols-2 gap-2.5">
+          {PRESETS.map((prof) => {
+            const isSelected = currentProfile.id === prof.id;
+            return (
+              <button
+                key={prof.id}
+                onClick={() => onProfileChange(prof)}
+                className={`sim-profile-card ${isSelected ? 'active' : ''}`}
+              >
+                {isSelected && (
+                  <span className="sim-profile-pip" />
+                )}
+                <div style={{ fontWeight: 600, fontSize: '12px', color: isSelected ? '#ffffff' : '#e2e8f0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {prof.name}
+                </div>
+                <div style={{ fontSize: '10px', marginTop: '4px', color: '#94a3b8', lineHeight: 1.3 }}>
+                  {prof.description}
+                </div>
+              </button>
+            );
+          })}
         </div>
-
       </div>
+
+      {/* Active RL Algorithm Dropdown Box */}
+      {onAlgorithmChange && (
+        <div className="flex flex-col gap-2">
+          <label className="form-label text-slate-300 font-semibold text-xs uppercase tracking-wider flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <Cpu size={13} className="text-cyan-400" /> Active RL Algorithm
+            </span>
+            <span className="text-[10px] text-cyan-400 font-mono">
+              {rlAlgorithm === 'actor-critic' ? 'Continuous A2C' : rlAlgorithm === 'dqn' ? 'Discrete DQN' : 'Clipped PPO'}
+            </span>
+          </label>
+          <select
+            value={rlAlgorithm || 'actor-critic'}
+            onChange={(e) => onAlgorithmChange(e.target.value as RLAlgorithmType)}
+            className="sim-select"
+            title="Select RL Algorithm for Simulation and Live Keystrokes"
+          >
+            <option value="actor-critic">Option 1: Actor-Critic (A2C Advantage PG)</option>
+            <option value="dqn">Option 2: Deep Q-Network (DQN Experience Replay)</option>
+            <option value="ppo">Option 3: Proximal Policy Optimization (PPO Clipped)</option>
+          </select>
+        </div>
+      )}
 
       {/* Typing Test Text Selection */}
       <div className="flex flex-col gap-2">
-        <label className="form-label">Simulation Target Text</label>
+        <label className="form-label text-slate-300 font-semibold text-xs uppercase tracking-wider">Simulation Target Text</label>
         <select
           value={selectedText}
           onChange={(e) => onTextChange(e.target.value)}
-          className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-purple-500"
+          className="sim-select"
         >
           {PRESET_TEXTS.map((pt, idx) => (
             <option key={idx} value={pt.text}>
@@ -121,45 +150,42 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             value={customText}
             onChange={(e) => onCustomTextChange(e.target.value)}
             placeholder="Type your own research test text here..."
-            className="p-2 mt-1 bg-slate-950 border border-slate-800 rounded-lg text-sm text-slate-300 h-16 resize-none focus:outline-none focus:border-purple-500 font-mono"
+            className="sim-select"
+            style={{ marginTop: '6px', height: '64px', resize: 'none', fontFamily: 'monospace' }}
           />
         )}
       </div>
 
       {/* Simulator Parameters */}
-      <div className="flex flex-col gap-3 bg-slate-950/40 p-3 rounded-xl border border-slate-900">
-        <div className="flex justify-between text-xs text-slate-500">
-          <span>Physical Noise (σ):</span>
-          <span className="font-mono text-purple-400">{currentProfile.noiseLevel}px</span>
+      <div className="flex flex-col gap-2.5 bg-slate-950/70 p-3 rounded-xl border border-slate-800/80">
+        <div className="flex justify-between text-xs text-slate-400">
+          <span className="font-medium">Physical Noise (σ):</span>
+          <span className="font-mono text-purple-400 font-semibold">{currentProfile.noiseLevel}px</span>
         </div>
-        <div className="flex justify-between text-xs text-slate-500">
-          <span>Hand Drift (X/Y):</span>
-          <span className="font-mono text-purple-400">
+        <div className="flex justify-between text-xs text-slate-400">
+          <span className="font-medium">Hand Drift (X/Y):</span>
+          <span className="font-mono text-purple-400 font-semibold">
             {currentProfile.driftX}px / {currentProfile.driftY}px
           </span>
         </div>
-        <div className="flex justify-between text-xs text-slate-500">
-          <span>Numeric Switch Rate:</span>
-          <span className="font-mono text-purple-400">
+        <div className="flex justify-between text-xs text-slate-400">
+          <span className="font-medium">Numeric Switch Rate:</span>
+          <span className="font-mono text-purple-400 font-semibold">
             {(currentProfile.numericFrequency * 100).toFixed(0)}%
           </span>
         </div>
       </div>
 
       {/* Control Buttons */}
-      <div className="flex flex-col gap-3 mt-auto">
+      <div className="flex flex-col gap-3 mt-auto pt-2">
         <div className="flex items-center gap-2 justify-between">
-          <label className="form-label">Simulation Speed</label>
-          <div className="flex items-center gap-1">
+          <label className="form-label text-slate-300 font-semibold text-xs uppercase tracking-wider">Simulation Speed</label>
+          <div className="sim-speed-box">
             {[1, 2, 5, 10].map((s) => (
               <button
                 key={s}
                 onClick={() => onSpeedChange(s)}
-                className={`px-2 py-1 text-xs rounded font-mono ${
-                  simSpeed === s
-                    ? 'bg-purple-600 text-white font-semibold'
-                    : 'bg-slate-900 text-slate-500 hover:text-slate-300'
-                }`}
+                className={`sim-speed-btn ${simSpeed === s ? 'active' : ''}`}
               >
                 {s}x
               </button>
@@ -171,16 +197,18 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
           <button
             onClick={onToggleStartPause}
             className={`flex-1 btn ${
-              isRunning ? 'btn-secondary text-amber-500 border-amber-500/20' : 'btn-primary'
+              isRunning
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25 shadow-lg shadow-amber-950/30'
+                : 'btn-primary'
             }`}
           >
             {isRunning ? (
               <>
-                <Pause size={16} /> Pause
+                <Pause size={15} /> Pause Simulation
               </>
             ) : (
               <>
-                <Play size={16} /> Start Simulation
+                <Play size={15} /> Start Simulation
               </>
             )}
           </button>
@@ -188,9 +216,9 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
           <button
             onClick={onReset}
             title="Reset simulation and keyboard layout"
-            className="btn btn-secondary px-3"
+            className="btn btn-secondary px-3.5"
           >
-            <RotateCcw size={16} />
+            <RotateCcw size={15} />
           </button>
         </div>
 
@@ -199,7 +227,8 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             value={fastTrainIters}
             onChange={(e) => setFastTrainIters(Number(e.target.value))}
             disabled={isRunning}
-            className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-purple-500 w-28"
+            className="sim-select"
+            style={{ width: '115px' }}
           >
             <option value={250}>250 iters</option>
             <option value={500}>500 iters</option>
@@ -213,9 +242,8 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
             onClick={() => onFastTrain(fastTrainIters)}
             disabled={isRunning}
             className="flex-1 btn btn-accent flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ textShadow: '0 0 8px rgba(6, 182, 212, 0.3)' }}
           >
-            <Sparkles size={16} /> Fast-Train
+            <Sparkles size={15} /> Fast-Train Policy
           </button>
         </div>
       </div>

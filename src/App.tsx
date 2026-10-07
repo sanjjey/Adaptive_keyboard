@@ -3,11 +3,24 @@ import { Keyboard } from './components/Keyboard';
 import { SimulationControls } from './components/SimulationControls';
 import { ConfigPanel } from './components/ConfigPanel';
 import { Analytics } from './components/Analytics';
+import { WhatsAppChat } from './components/WhatsAppChat';
 import { KeyboardRLAgent } from './rl/KeyboardRLAgent';
 import { TyperSimulator } from './rl/TyperSimulator';
-import type { RLParams, TouchPoint, TypingStats, TyperProfile } from './rl/types';
+import type { RLParams, TouchPoint, TypingStats, TyperProfile, RLAlgorithmType } from './rl/types';
 import { PRESETS } from './rl/TyperSimulator';
-import { Keyboard as KeyboardIcon, HelpCircle, Sparkles, Smartphone, Tablet, Laptop as LaptopIcon, RotateCcw, Save, Users } from 'lucide-react';
+import {
+  Keyboard as KeyboardIcon,
+  Sparkles,
+  Smartphone,
+  Tablet,
+  Laptop as LaptopIcon,
+  RotateCcw,
+  Save,
+  Users,
+  MessageCircle,
+  FlaskConical,
+  Cpu,
+} from 'lucide-react';
 
 export interface UserProfile {
   id: string;
@@ -185,6 +198,10 @@ const DEFAULT_STATS: TypingStats = {
   totalKeystrokes: 0,
   correctKeystrokes: 0,
   totalErrors: 0,
+  cumulativeReward: 0,
+  lastReward: 0,
+  meanTdError: 0,
+  criticLoss: 0,
   switchesSaved: 0,
   manualSwitches: 0,
 };
@@ -242,27 +259,7 @@ const DEVICE_PRESETS: DevicePresetConfig[] = [
   },
 ];
 
-interface ChatMessage {
-  id: string;
-  sender: 'user' | 'bot';
-  text: string;
-  timestamp: string;
-}
 
-const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
-  {
-    id: '1',
-    sender: 'bot',
-    text: 'Hello! Focus the chat input field below and start typing to test the adaptive virtual keyboard.',
-    timestamp: '12:00 PM',
-  },
-  {
-    id: '2',
-    sender: 'bot',
-    text: "As you type, my Bayesian Touch Decoder will dynamically warp and shift the key boundaries to correct your typos. Press 'Send' to submit your message!",
-    timestamp: '12:01 PM',
-  },
-];
 
 export default function App() {
   // 1. Core Agent Instances (persistent refs)
@@ -279,6 +276,14 @@ export default function App() {
   const [spatialParams, setSpatialParams] = useState<RLParams>(DEFAULT_SPATIAL_PARAMS);
   const [currentProfile, setCurrentProfile] = useState<TyperProfile>(PRESETS[0]);
   const [stats, setStats] = useState<TypingStats>(DEFAULT_STATS);
+  const [rlAlgorithm, setRlAlgorithm] = useState<RLAlgorithmType>('actor-critic');
+
+  const handleAlgorithmChange = (newAlgo: RLAlgorithmType) => {
+    setRlAlgorithm(newAlgo);
+    if (spatialAgentRef.current) {
+      spatialAgentRef.current.setAlgorithm(newAlgo);
+    }
+  };
   
   // History of stats points for charting
   const [metricHistory, setMetricHistory] = useState<any[]>([]);
@@ -287,14 +292,11 @@ export default function App() {
   const [showVoronoi, setShowVoronoi] = useState(true);
   const [showVectors, setShowVectors] = useState(true);
   const [showTouches, setShowTouches] = useState(true);
-  const [showOverlays, _setShowOverlays] = useState(false);
+  const [showOverlays, setShowOverlays] = useState(false);
   const [isSmoothingEnabled, setIsSmoothingEnabled] = useState(false);
 
   const [deviceMode, setDeviceMode] = useState<'mobile' | 'tablet' | 'laptop'>('laptop');
-  const [isProductDemo, setIsProductDemo] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const [activeTab, setActiveTab] = useState<'studio' | 'whatsapp'>('studio');
 
   // ── Backspace-as-Negative-Reward state ──────────────────────────────────
   // Ring buffer storing metadata of the last 50 taps so we can retroactively
@@ -450,44 +452,25 @@ export default function App() {
 
 
 
-  // Scroll chat to bottom when messages update
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatMessages]);
-
-  // Auto-open keyboard if simulator runs in Product Demo mode
-  useEffect(() => {
-    if (isRunning && isProductDemo) {
-      setIsKeyboardVisible(true);
-    }
-  }, [isRunning, isProductDemo]);
-
   // Listen to character index progress and auto-load next phrase for MacKenzie corpus
   useEffect(() => {
     const currentText = selectedTextOption === 'custom' ? customText : targetText;
     if (charIndex > 0 && charIndex >= currentText.length) {
-      if (isProductDemo) {
-        handleSendMessage();
+      if (selectedTextOption === 'mackenzie') {
+        const nextIdx = (mackenzieIndex + 1) % MACKENZIE_PHRASES.length;
+        setMackenzieIndex(nextIdx);
+        setTargetText(MACKENZIE_PHRASES[nextIdx]);
+        setInputText('');
+        setCharIndex(0);
+      } else if (selectedTextOption === 'synthetic') {
+        setTargetText(generateSyntheticPhrase());
+        setInputText('');
+        setCharIndex(0);
       } else {
-        if (selectedTextOption === 'mackenzie') {
-          const nextIdx = (mackenzieIndex + 1) % MACKENZIE_PHRASES.length;
-          setMackenzieIndex(nextIdx);
-          setTargetText(MACKENZIE_PHRASES[nextIdx]);
-          setInputText('');
-          setCharIndex(0);
-        } else if (selectedTextOption === 'synthetic') {
-          setTargetText(generateSyntheticPhrase());
-          setInputText('');
-          setCharIndex(0);
-
-        } else {
-          setIsRunning(false);
-        }
+        setIsRunning(false);
       }
     }
-  }, [charIndex, targetText, customText, selectedTextOption, mackenzieIndex, isProductDemo]);
+  }, [charIndex, targetText, customText, selectedTextOption, mackenzieIndex]);
 
   // 3. Typing Logic (Process Keystroke)
   const processKeystroke = (targetChar: string, x: number, y: number, manualSwitch = false) => {
@@ -514,7 +497,14 @@ export default function App() {
 
     // A. Update Spatial RL Layout
     if (targetKey && classifiedKey && targetKey.type !== 'special') {
-      spatialAgent.updateLayout(targetKeyId, classifiedId, x, y, stats.totalKeystrokes);
+      spatialAgent.updateLayout(
+        targetKeyId,
+        classifiedId,
+        x,
+        y,
+        stats.totalKeystrokes,
+        targetText.slice(0, charIndex)
+      );
     }
 
     // B. Calculate typing time duration for this keystroke
@@ -558,8 +548,8 @@ export default function App() {
       const minutes = newSimTime / 60000;
       const wpm = minutes > 0 ? (correctK / 5) / minutes : 0;
 
-      const switchesSaved = prev.switchesSaved;
-      const manualSwitches = prev.manualSwitches + (manualSwitch ? 1 : 0);
+      const switchesSaved = prev.switchesSaved ?? 0;
+      const manualSwitches = (prev.manualSwitches ?? 0) + (manualSwitch ? 1 : 0);
 
       return {
         wpm,
@@ -567,6 +557,10 @@ export default function App() {
         totalKeystrokes: totalK,
         correctKeystrokes: correctK,
         totalErrors: errors,
+        cumulativeReward: spatialAgent.cumulativeReward,
+        lastReward: spatialAgent.lastReward,
+        meanTdError: spatialAgent.runningTdError,
+        criticLoss: spatialAgent.criticLoss,
         switchesSaved,
         manualSwitches,
       };
@@ -581,27 +575,19 @@ export default function App() {
       const deviation = calculateMeanLayoutDrift();
       
       setMetricHistory((prevHistory) => {
-        // Record data point every few keystrokes or every step to avoid crowding
+        const point = {
+          wpm: currentStats.wpm,
+          errorRate: (currentStats.totalErrors / currentStats.totalKeystrokes) * 100,
+          stability: deviation,
+          reward: spatialAgent.cumulativeReward,
+          tdError: spatialAgent.runningTdError,
+          savedSwitches: currentStats.switchesSaved,
+        };
+
         if (prevHistory.length > 40) {
-          return [
-            ...prevHistory.slice(1),
-            {
-              wpm: currentStats.wpm,
-              errorRate: (currentStats.totalErrors / currentStats.totalKeystrokes) * 100,
-              stability: deviation,
-              savedSwitches: currentStats.switchesSaved,
-            },
-          ];
+          return [...prevHistory.slice(1), point];
         }
-        return [
-          ...prevHistory,
-          {
-            wpm: currentStats.wpm,
-            errorRate: (currentStats.totalErrors / currentStats.totalKeystrokes) * 100,
-            stability: deviation,
-            savedSwitches: currentStats.switchesSaved,
-          },
-        ];
+        return [...prevHistory, point];
       });
 
       return currentStats;
@@ -627,60 +613,15 @@ export default function App() {
     return totalDist / activeKeys.length;
   };
 
-  const handleSendMessage = () => {
-    const isFreeMode = selectedTextOption === 'free' || isProductDemo;
-    if (!isFreeMode) {
-      const currentText = selectedTextOption === 'custom' ? customText : targetText;
-      if (charIndex < currentText.length) return;
-    } else {
-      if (inputText.trim().length === 0) return;
-    }
-
-    const userMessageText = inputText;
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: 'user',
-      text: userMessageText,
-      timestamp: timeStr,
-    };
-
-    setChatMessages((prev) => [...prev, userMsg]);
+  const handleAdvancePhrase = () => {
     setInputText('');
     setCharIndex(0);
-
-    // Update phrase instantly so the simulation can keep typing without interruption
-    let nextPhrase = '';
     if (selectedTextOption === 'mackenzie') {
       const nextIdx = (mackenzieIndex + 1) % MACKENZIE_PHRASES.length;
       setMackenzieIndex(nextIdx);
-      nextPhrase = MACKENZIE_PHRASES[nextIdx];
-      setTargetText(nextPhrase);
+      setTargetText(MACKENZIE_PHRASES[nextIdx]);
     } else if (selectedTextOption === 'synthetic') {
-      nextPhrase = generateSyntheticPhrase();
-      setTargetText(nextPhrase);
-
-    } else if (!isFreeMode) {
-      nextPhrase = selectedTextOption === 'custom' ? customText : targetText;
-      setTargetText(nextPhrase);
-    }
-
-    // Chatbot response
-    if (!isFreeMode) {
-      setTimeout(() => {
-        const drift = calculateMeanLayoutDrift();
-        const botResponse = `Calibration successful! Current mean spatial key layout drift is ${drift.toFixed(1)}px. Keep typing to lock in muscle memory! Next phrase is loaded.`;
-        
-        const botMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: 'bot',
-          text: botResponse,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-
-        setChatMessages((prev) => [...prev, botMsg]);
-      }, 1000);
+      setTargetText(generateSyntheticPhrase());
     }
   };
 
@@ -734,7 +675,7 @@ export default function App() {
     }
 
     if (classifiedId === 'enter') {
-      handleSendMessage();
+      handleAdvancePhrase();
       return;
     }
 
@@ -765,7 +706,7 @@ export default function App() {
         // ─────────────────────────────────────────────────────────────────────
 
         setInputText((prev) => prev.slice(0, -1));
-        const isFreeMode = selectedTextOption === 'free' || isProductDemo;
+        const isFreeMode = selectedTextOption === 'free';
         if (!isFreeMode) {
           setCharIndex((prev) => Math.max(0, prev - 1));
         }
@@ -774,7 +715,7 @@ export default function App() {
       return;
     }
 
-    const isFreeMode = selectedTextOption === 'free' || isProductDemo;
+    const isFreeMode = selectedTextOption === 'free';
     
     if (!isFreeMode) {
       const currentText = selectedTextOption === 'custom' ? customText : targetText;
@@ -795,7 +736,7 @@ export default function App() {
 
     // Apply minor positive RL reward assuming the user tapped correctly
     if (classifiedId !== 'space' && classifiedId !== 'shift' && classifiedId !== 'enter') {
-      spatialAgent.updateLayout(classifiedId, classifiedId, x, y, stats.totalKeystrokes);
+      spatialAgent.updateLayout(classifiedId, classifiedId, x, y, stats.totalKeystrokes, inputText.slice(-2));
     }
 
     // Record tap for backspace penalty
@@ -806,6 +747,51 @@ export default function App() {
 
     setInputText((prev) => prev + typedChar);
   };
+
+  // Physical keyboard listener for Studio mode when not in automated simulation
+  useEffect(() => {
+    if (activeTab !== 'studio' || isRunning) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAdvancePhrase();
+        return;
+      }
+
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        const bk = spatialAgent.keys.find((k) => k.id === 'backspace');
+        handleKeyboardTap(bk ? bk.currentX : 750, bk ? bk.currentY : 305);
+        return;
+      }
+
+      if (e.key === ' ') {
+        e.preventDefault();
+        const sp = spatialAgent.keys.find((k) => k.id === 'space');
+        handleKeyboardTap(sp ? sp.currentX : 420, sp ? sp.currentY : 305);
+        return;
+      }
+
+      const char = e.key.toLowerCase();
+      const matched = spatialAgent.keys.find((k) => k.char.toLowerCase() === char && k.type !== 'special');
+      if (matched) {
+        e.preventDefault();
+        const jitterX = (Math.random() - 0.5) * 14;
+        const jitterY = (Math.random() - 0.5) * 14;
+        handleKeyboardTap(matched.currentX + jitterX, matched.currentY + jitterY);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, isRunning, charIndex, targetText, customText, selectedTextOption, isShiftActive]);
 
   // 5.5 Fast Train offline training loop
   const handleFastTrain = (iterations = 250) => {
@@ -916,6 +902,8 @@ export default function App() {
           wpm: currentWpm,
           errorRate: currentErrorRate,
           stability: deviation,
+          reward: spatialAgent.cumulativeReward,
+          tdError: spatialAgent.runningTdError,
           savedSwitches: switchesSaved,
         });
       }
@@ -938,6 +926,10 @@ export default function App() {
       totalKeystrokes,
       correctKeystrokes,
       totalErrors,
+      cumulativeReward: spatialAgent.cumulativeReward,
+      lastReward: spatialAgent.lastReward,
+      meanTdError: spatialAgent.runningTdError,
+      criticLoss: spatialAgent.criticLoss,
       switchesSaved,
       manualSwitches,
     };
@@ -992,497 +984,462 @@ export default function App() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Premium Header Banner */}
-      <header className="flex justify-between items-center">
+      <header className="flex justify-between items-center py-3 px-6 bg-slate-950/80 border-b border-slate-900 sticky top-0 z-50 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-xl shadow-lg shadow-purple-500/20 text-white">
             <KeyboardIcon size={24} />
           </div>
           <div>
-            <h1>Antigravity Adaptive Keyboard Lab <span className="text-xs font-mono font-normal tracking-wide px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 ml-2">A2KL v1.0</span></h1>
-            <p className="text-xs text-slate-500 font-medium">Research Sandbox for Reinforcement Learning Virtual Layout Optimization</p>
+            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              Antigravity Adaptive Keyboard Lab
+              <span className="text-[10px] font-mono font-normal tracking-wide px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                Actor-Critic RL
+              </span>
+            </h1>
+            <p className="text-xs text-slate-400 font-medium">
+              Reinforcement Learning Virtual Layout Optimization & Bayesian Touch Decoding
+            </p>
           </div>
         </div>
+
+        {/* Tab Switcher & Status */}
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => {
-              setIsProductDemo((prev) => {
-                const nextVal = !prev;
-                if (nextVal) {
-                  setIsKeyboardVisible(false);
-                }
-                return nextVal;
-              });
-              handleReset();
-            }}
-            className="btn btn-primary py-1.5 px-4 text-xs font-semibold rounded-xl shadow-lg flex items-center gap-2"
-          >
-            <Sparkles size={13} />
-            {isProductDemo ? "Switch to Research Lab" : "Switch to Product Chat Demo"}
-          </button>
-          <div className="flex items-center gap-2">
+          <div className="tab-switcher-box">
+            <button
+              onClick={() => setActiveTab('studio')}
+              className={`tab-nav-btn ${activeTab === 'studio' ? 'active-studio' : ''}`}
+            >
+              <FlaskConical size={14} />
+              <span>RL Lab & Studio</span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('whatsapp');
+                setDeviceMode('mobile');
+              }}
+              className={`tab-nav-btn ${activeTab === 'whatsapp' ? 'active-whatsapp' : ''}`}
+            >
+              <MessageCircle size={14} />
+              <span>WhatsApp Simulator</span>
+              <span className="tab-nav-badge">
+                Phone
+              </span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-900/60 rounded-lg border border-slate-800">
             <span className="dot dot-green"></span>
-            <span className="text-xs font-semibold text-slate-400 font-mono">AGENT CONVERGING</span>
+            <span className="text-[11px] font-semibold text-emerald-400 font-mono">
+              RL CONVERGING
+            </span>
           </div>
         </div>
       </header>
 
-      {/* Main Sandbox Grid */}
-      <div className={isProductDemo ? "flex flex-col flex-1 items-center pt-8 w-full max-w-[100vw] overflow-x-hidden" : "dashboard-grid flex-1"}>
-        {/* Left Side: Keyboard Canvas & Interactive Console */}
-        <div className="flex flex-col gap-6 w-full items-center">
-          {isProductDemo ? (
-            /* ===== PRODUCT DEMO VIEW: Authentic WhatsApp-style Chat ===== */
-            <div className="flex flex-col gap-4 w-full items-center">
-              {/* Profile & Device Manager Toolbar */}
-              <div className="flex items-center justify-between gap-4 px-4 py-3 bg-slate-900/80 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md w-full max-w-[600px] flex-wrap">
-                
-                {/* Profiles */}
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    <Users size={14} className="text-blue-400" /> User
-                  </div>
-                  <select 
-                    className="bg-slate-950/50 border border-slate-700/50 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer"
-                    value={activeProfileId || ''}
-                    onChange={(e) => handleSwitchProfile(e.target.value === '' ? null : e.target.value)}
+      {/* Main Content Area */}
+      {activeTab === 'whatsapp' ? (
+        /* ==============================================================
+           TAB 2: DEDICATED WHATSAPP MESSENGER SIMULATOR (PHONE LAYOUT)
+           ============================================================== */
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6">
+          <div className="mb-4 text-center">
+            <h2 className="text-lg font-bold text-white flex items-center justify-center gap-2">
+              <MessageCircle size={18} className="text-[#25d366]" /> WhatsApp Live Typing Testbed
+            </h2>
+            <p className="text-xs text-slate-400 max-w-lg mx-auto mt-0.5">
+              Default Smartphone Enclosure • Test natural conversational typing. The RL agent adapts key centroids and weights to eliminate finger typos in real time.
+            </p>
+          </div>
+
+          <WhatsAppChat
+            agent={spatialAgent}
+            stats={stats}
+            recentTouches={recentTouches}
+            correctionFlashKey={correctionFlashKey}
+            backspaceCorrectionCount={backspaceCorrectionCount}
+            onResetLayout={handleReset}
+            showVoronoi={showVoronoi}
+            onToggleVoronoi={() => setShowVoronoi(!showVoronoi)}
+            rlAlgorithm={rlAlgorithm}
+            onAlgorithmChange={handleAlgorithmChange}
+          />
+        </main>
+      ) : (
+        /* ==============================================================
+           TAB 1: RL LAB & BENCHMARK STUDIO (3 HARDWARE LAYOUT MODES)
+           ============================================================== */
+        <main className="dashboard-grid flex-1 p-6 max-w-7xl mx-auto w-full">
+          {/* Left Side: Hardware Chassis & Interactive Keyboard */}
+          <div className="flex flex-col gap-5 w-full items-center">
+            {/* Top Toolbar: User Profiles & Device Layout Selector */}
+            <div className="profile-toolbar">
+              {/* RL Algorithm Engine Selector Dropdown Box */}
+              <div className="profile-group">
+                <div className="profile-label">
+                  <Cpu size={14} className="text-cyan-400" /> RL Engine:
+                </div>
+                <select
+                  className="profile-select"
+                  value={rlAlgorithm}
+                  onChange={(e) => handleAlgorithmChange(e.target.value as RLAlgorithmType)}
+                  title="Switch Reinforcement Learning Algorithm Engine"
+                >
+                  <option value="actor-critic">Option 1: Actor-Critic (A2C Advantage PG)</option>
+                  <option value="dqn">Option 2: Deep Q-Network (DQN Replay)</option>
+                  <option value="ppo">Option 3: Proximal Policy Opt (PPO Clipped)</option>
+                </select>
+              </div>
+
+              {/* User Profiles */}
+              <div className="profile-group">
+                <div className="profile-label">
+                  <Users size={14} className="text-purple-400" /> Profile:
+                </div>
+                <select
+                  className="profile-select"
+                  value={activeProfileId || ''}
+                  onChange={(e) => handleSwitchProfile(e.target.value === '' ? null : e.target.value)}
+                >
+                  <option value="">Default Keyboard (No Profile)</option>
+                  {profiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleSaveAsNewProfile}
+                  className="btn-profile-save"
+                  title="Save current layout weights as a new profile"
+                >
+                  <Save size={13} /> Save As
+                </button>
+                {activeProfileId && (
+                  <button
+                    onClick={handleResetMemory}
+                    className="btn-profile-reset"
+                    title="Reset active profile adapted layout"
                   >
-                    <option value="">Normal Keyboard (No Profile)</option>
-                    {profiles.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                  <button 
-                    onClick={handleSaveAsNewProfile}
-                    className="flex items-center gap-1.5 text-[11px] font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-2 py-1.5 rounded-lg transition-all"
-                    title="Save current layout as a new profile"
-                  >
-                    <Save size={12} /> Save As
+                    <RotateCcw size={13} /> Reset Profile
                   </button>
-                </div>
-
-                {/* Device selector */}
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1 bg-slate-950/50 p-1 rounded-lg border border-slate-800/50">
-                    {DEVICE_PRESETS.map((preset) => {
-                      const isActive = deviceMode === preset.id;
-                      let Icon = LaptopIcon;
-                      if (preset.id === 'mobile') Icon = Smartphone;
-                      if (preset.id === 'tablet') Icon = Tablet;
-                      return (
-                        <button
-                          key={preset.id}
-                          onClick={() => { setDeviceMode(preset.id); handleReset(); }}
-                          className={`flex items-center justify-center p-1.5 rounded-md transition-all ${
-                            isActive
-                              ? 'bg-purple-500/20 text-purple-400 shadow-sm'
-                              : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-                          }`}
-                          title={preset.name}
-                        >
-                          <Icon size={14} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Device outer shell */}
-              <div className="flex justify-center w-full">
-                <div className={`wa-device-shell device-frame-${deviceMode}`}>
+              {/* Three Defined Hardware Layout Modes Switcher */}
+              <div className="hw-switcher-wrapper">
+                <span className="profile-label">
+                  Hardware Layout:
+                </span>
+                <div className="hw-switcher-box">
+                  {DEVICE_PRESETS.map((preset) => {
+                    const isActive = deviceMode === preset.id;
+                    let Icon = LaptopIcon;
+                    if (preset.id === 'tablet') Icon = Tablet;
+                    if (preset.id === 'mobile') Icon = Smartphone;
 
-                  {/* ── Phone top bar ── */}
-                  {deviceMode === 'mobile' && (
-                    <div className="wa-status-bar">
-                      <span className="wa-status-time">9:41</span>
-                      <div className="wa-status-icons">
-                        <svg width="15" height="10" viewBox="0 0 15 10" fill="currentColor"><rect x="0" y="3" width="3" height="7" rx="0.5"/><rect x="4" y="2" width="3" height="8" rx="0.5"/><rect x="8" y="0.5" width="3" height="9.5" rx="0.5"/><rect x="12" y="0" width="3" height="10" rx="0.5" opacity="0.3"/></svg>
-                        <svg width="14" height="11" viewBox="0 0 14 11" fill="currentColor"><path d="M7 2.2C9.9 2.2 12.5 3.6 14 5.8L12.6 7.1C11.4 5.4 9.3 4.2 7 4.2S2.6 5.4 1.4 7.1L0 5.8C1.5 3.6 4.1 2.2 7 2.2Z"/><path d="M7 5.5C8.7 5.5 10.2 6.4 11.1 7.7L9.7 9C9 8.1 8.1 7.5 7 7.5S5 8.1 4.3 9L2.9 7.7C3.8 6.4 5.3 5.5 7 5.5Z"/><circle cx="7" cy="10.5" r="1.5"/></svg>
-                        <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="currentColor" strokeOpacity="0.35"/><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/><path d="M23 4.5V7.5A2 2 0 0 0 23 4.5Z" fill="currentColor" fillOpacity="0.4"/></svg>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── WhatsApp-style chat header ── */}
-                  <div className="wa-chat-header">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {/* Back arrow */}
-                      <svg width="10" height="16" viewBox="0 0 10 16" fill="none" className="flex-shrink-0 opacity-80">
-                        <path d="M9 1L2 8L9 15" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      {/* Avatar */}
-                      <div className="wa-avatar">
-                        <span>A2</span>
-                      </div>
-                      {/* Contact info */}
-                      <div className="min-w-0 flex-1">
-                        <div className="wa-contact-name">A2KL Adaptive Agent</div>
-                        <div className="wa-contact-status">
-                          <span className="wa-online-dot"></span>
-                          online
-                        </div>
-                      </div>
-                    </div>
-                    {/* Header icons */}
-                    <div className="flex items-center gap-4 flex-shrink-0">
-                      {activeProfileId && (
-                        <button onClick={handleResetMemory} title="Reset This Profile's Memory" className="hover:opacity-70 transition-opacity flex items-center justify-center">
-                          <RotateCcw size={18} color="white" opacity="0.9" />
-                        </button>
-                      )}
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="white" opacity="0.9"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="white" opacity="0.9"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-                    </div>
-                  </div>
-
-                  {/* ── Chat wallpaper + messages ── */}
-                  <div className="wa-chat-body">
-                    {/* Date chip */}
-                    <div className="wa-date-chip">TODAY</div>
-
-                    {/* Messages */}
-                    {chatMessages.map((msg, idx) => (
-                      <div key={msg.id} className={`wa-msg-row ${msg.sender}`}>
-                        <div className={`wa-bubble ${msg.sender}`}>
-                          {msg.sender === 'bot' && idx === 0 && (
-                            <div className="wa-bubble-sender">A2KL Agent</div>
-                          )}
-                          <div className="wa-bubble-text">{msg.text}</div>
-                          <div className="wa-bubble-meta">
-                            <span className="wa-bubble-time">{msg.timestamp}</span>
-                            {msg.sender === 'user' && (
-                              <svg width="14" height="10" viewBox="0 0 16 11" className="wa-tick ml-0.5">
-                                <path d="M1 6L5 10L11 1" stroke="#53bdeb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                                <path d="M5 6L9 10L15 1" stroke="#53bdeb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Typing indicator when simulator is running */}
-                    {isRunning && (
-                      <div className="wa-msg-row bot">
-                        <div className="wa-bubble bot wa-typing-bubble">
-                          <span></span><span></span><span></span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div ref={chatEndRef} />
-                  </div>
-
-                  {/* ── Input area ── */}
-                  <div className="wa-input-area">
-                    {/* Text input pill */}
-                    <div
-                      className="wa-input-pill"
-                      onClick={() => setIsKeyboardVisible(true)}
-                    >
-                      {/* Emoji icon */}
-                      <svg width="22" height="22" viewBox="0 0 24 24" className="wa-input-icon" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.7"/>
-                        <path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
-                        <circle cx="9" cy="10" r="1.2" fill="currentColor"/>
-                        <circle cx="15" cy="10" r="1.2" fill="currentColor"/>
-                      </svg>
-                      {/* Live typing preview */}
-                      <div className="wa-input-text flex-1 overflow-hidden">
-                        {inputText || charIndex < activeTestText.length ? (
-                          <span className="wa-typed-text">
-                            {inputText}
-                            {charIndex < activeTestText.length && (
-                              <span className="wa-cursor-char">
-                                {activeTestText[charIndex] === ' ' ? '\u00A0' : activeTestText[charIndex]}
-                              </span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="wa-placeholder">Type a message</span>
-                        )}
-                      </div>
-                      {/* Attachment icon */}
-                      <svg width="22" height="22" viewBox="0 0 24 24" className="wa-input-icon" fill="none">
-                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      {/* Camera icon */}
-                      <svg width="22" height="22" viewBox="0 0 24 24" className="wa-input-icon" fill="none">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
-                        <circle cx="12" cy="13" r="4" stroke="currentColor" strokeWidth="1.7"/>
-                      </svg>
-                    </div>
-
-                    {/* Send / Mic button */}
-                    <button
-                      onClick={charIndex >= activeTestText.length ? handleSendMessage : () => setIsKeyboardVisible(true)}
-                      className="wa-send-btn"
-                    >
-                      {charIndex >= activeTestText.length ? (
-                        /* Paper airplane send icon */
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                          <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                        </svg>
-                      ) : (
-                        /* Mic icon */
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                          <rect x="9" y="2" width="6" height="11" rx="3" fill="white"/>
-                          <path d="M5 10a7 7 0 0 0 14 0" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                          <line x1="12" y1="19" x2="12" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                          <line x1="8" y1="23" x2="16" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* ── Slide-up Adaptive Keyboard ── */}
-                  <div className={`wa-keyboard-drawer ${isKeyboardVisible ? 'open' : 'closed'}`}>
-                    {/* Tiny drag handle */}
-                    <div className="wa-keyboard-handle" onClick={() => setIsKeyboardVisible(false)}>
-                      <div className="wa-handle-bar"></div>
-                    </div>
-                    {/* Keyboard label bar */}
-                    <div className="wa-keyboard-topbar">
-                      <span className="wa-keyboard-label">
-                        <span className="wa-kb-dot"></span>
-                        A2KL Adaptive Keyboard
-                      </span>
-                      <div className="flex gap-3 text-[10px] text-slate-500">
-                        <label className="flex items-center gap-1 cursor-pointer hover:text-slate-300">
-                          <input type="checkbox" checked={showVoronoi} onChange={(e) => setShowVoronoi(e.target.checked)} className="accent-purple-600 w-2.5 h-2.5" /> Cells
-                        </label>
-                        <label className="flex items-center gap-1 cursor-pointer hover:text-slate-300">
-                          <input type="checkbox" checked={showVectors} onChange={(e) => setShowVectors(e.target.checked)} className="accent-purple-600 w-2.5 h-2.5" /> Drift
-                        </label>
-                        <label className="flex items-center gap-1 cursor-pointer hover:text-slate-300">
-                          <input type="checkbox" checked={isSmoothingEnabled} onChange={(e) => setIsSmoothingEnabled(e.target.checked)} className="accent-purple-600 w-2.5 h-2.5" /> Filter
-                        </label>
-                      </div>
-                    </div>
-                    {/* The actual SVG keyboard */}
-                    <Keyboard
-                      agent={spatialAgent}
-                      recentTouches={recentTouches}
-                      showVoronoi={showVoronoi}
-                      showVectors={showVectors}
-                      showTouches={showTouches}
-                      showOverlays={showOverlays}
-                      isSmoothingEnabled={isSmoothingEnabled}
-                      onKeyTap={handleKeyboardTap}
-                      isShiftActive={isShiftActive}
-                      correctionFlashKey={correctionFlashKey}
-                    />
-                    {/* Home indicator */}
-                    <div className="wa-home-bar"><div></div></div>
-                  </div>
-
-                  {/* phone bottom bar */}
-                  {deviceMode === 'mobile' && !isKeyboardVisible && (
-                    <div className="wa-home-indicator-outer"><div></div></div>
-                  )}
+                    return (
+                      <button
+                        key={preset.id}
+                        onClick={() => {
+                          setDeviceMode(preset.id);
+                          handleReset();
+                        }}
+                        className={`hw-btn ${isActive ? 'active' : ''}`}
+                        title={preset.name}
+                      >
+                        <Icon size={14} />
+                        <span>{preset.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
-          ) : (
-            /* Research Lab View (Default View) */
-            <>
-              {/* Target Text Display Console */}
-              <div className="glass-panel card flex flex-col gap-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-purple-400" /> Target Script Monitor
-                  </span>
-                  <span className="text-xs font-mono text-purple-400">
-                    Index: {charIndex} / {activeTestText.length} chars
-                  </span>
-                </div>
 
-                {/* Target script window */}
-                <div className="p-4 bg-slate-950/80 rounded-xl border border-slate-900 leading-relaxed text-lg font-mono relative overflow-hidden">
-                  <div className="absolute top-0 bottom-0 left-0 w-1 bg-purple-500"></div>
-                  {/* Highlight typed vs remaining */}
-                  <span className="text-slate-500">{inputText}</span>
-                  {charIndex < activeTestText.length && (
-                    <span
-                      className="bg-purple-600/30 text-white border-b-2 border-purple-400 px-0.5 animate-pulse"
-                      style={{ textShadow: '0 0 8px var(--accent-purple)' }}
-                    >
-                      {activeTestText[charIndex] === ' ' ? '⎵' : activeTestText[charIndex]}
+            {/* ── 1. LAPTOP HARDWARE CHASSIS ── */}
+            {deviceMode === 'laptop' && (
+              <div className="device-chassis-laptop w-full">
+                {/* Laptop Screen Lid Header */}
+                <div className="laptop-lid-header">
+                  <div className="laptop-camera-notch">
+                    <span className="laptop-webcam-dot" title="Webcam sensor"></span>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      Laptop Deck • 1000×350px Viewport • Wide Key Hitbox • α = 0.20
                     </span>
-                  )}
-                  <span className="text-slate-400">{activeTestText.slice(charIndex + 1)}</span>
+                  </div>
+                  <div className="text-[10px] font-mono text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
+                    Max Weight: 8000 • Desktop Ergonomics
+                  </div>
                 </div>
 
-                {/* Tip overlay */}
-                <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-900/30 p-2.5 rounded-lg border border-slate-900/60">
-                  <HelpCircle size={14} className="text-slate-400" />
-                  <span>
-                    {isRunning
-                      ? 'Simulation is running. Watch how the key boundaries expand or shift dynamically.'
-                      : 'Click keys on the layout below to manually type. Use "123" to toggle layout, and "⌫" to correct typos.'}
+                {/* Target Script Monitor */}
+                <div className="p-3.5 bg-slate-950/90 rounded-xl border border-slate-800 font-mono text-base relative overflow-hidden">
+                  <div className="flex justify-between items-center mb-1 text-[11px] text-slate-400 font-sans">
+                    <span className="flex items-center gap-1 font-semibold uppercase tracking-wider text-purple-400">
+                      <Sparkles size={13} /> Mackenzie Script Monitor
+                    </span>
+                    <span>
+                      Char: {charIndex} / {activeTestText.length}
+                    </span>
+                  </div>
+                  <div className="leading-relaxed">
+                    <span className="text-slate-500">{inputText}</span>
+                    {charIndex < activeTestText.length && (
+                      <span className="bg-purple-600/40 text-white border-b-2 border-purple-400 px-0.5 animate-pulse">
+                        {activeTestText[charIndex] === ' ' ? '⎵' : activeTestText[charIndex]}
+                      </span>
+                    )}
+                    <span className="text-slate-400">{activeTestText.slice(charIndex + 1)}</span>
+                  </div>
+                </div>
+
+                {/* Recessed Keyboard Deck */}
+                <div className="laptop-keyboard-deck">
+                  <Keyboard
+                    agent={spatialAgent}
+                    recentTouches={recentTouches}
+                    showVoronoi={showVoronoi}
+                    showVectors={showVectors}
+                    showTouches={showTouches}
+                    showOverlays={showOverlays}
+                    isSmoothingEnabled={isSmoothingEnabled}
+                    onKeyTap={handleKeyboardTap}
+                    isShiftActive={isShiftActive}
+                    correctionFlashKey={correctionFlashKey}
+                  />
+                </div>
+
+                {/* Palm Rest & Trackpad Outline */}
+                <div className="flex flex-col items-center gap-1 pt-1">
+                  <div className="laptop-trackpad" title="Multitouch Trackpad Area"></div>
+                  <span className="text-[9px] font-mono text-slate-600 uppercase tracking-widest">
+                    Precision Force Trackpad
                   </span>
                 </div>
               </div>
+            )}
 
-              {/* Interactive Keyboard Container */}
-              <div className="glass-panel card flex flex-col gap-4">
-                <div className="keyboard-header">
-                  <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase">
-                    Virtual Keyboard Canvas
+            {/* ── 2. TABLET HARDWARE CHASSIS ── */}
+            {deviceMode === 'tablet' && (
+              <div className="device-chassis-tablet w-full">
+                {/* Front Camera Dot */}
+                <div className="tablet-camera-notch" title="Tablet Center Camera"></div>
+
+                <div className="flex justify-between items-center px-1 text-[11px] font-mono text-slate-400">
+                  <span>iPad Pro 11″ / Tablet Landscape • 740px Viewport</span>
+                  <span className="text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                    Balanced Touch Geometry • α = 0.15
                   </span>
-                  
-                  <div className="flex items-center gap-4 text-xs">
-                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-white" title="Smoothens high-frequency muscle spasms using centroid trajectory averaging">
-                      <input
-                        type="checkbox"
-                        checked={isSmoothingEnabled}
-                        onChange={(e) => setIsSmoothingEnabled(e.target.checked)}
-                        className="accent-purple-600"
-                      />
-                      Tremor Filter
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={showVoronoi}
-                        onChange={(e) => setShowVoronoi(e.target.checked)}
-                        className="accent-purple-600"
-                      />
-                      Show Voronoi Cells
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={showVectors}
-                        onChange={(e) => setShowVectors(e.target.checked)}
-                        className="accent-purple-600"
-                      />
-                      Drift Vectors
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={showTouches}
-                        onChange={(e) => setShowTouches(e.target.checked)}
-                        className="accent-purple-600"
-                      />
-                      Touch Scatter
-                    </label>
+                </div>
+
+                {/* Target Script Monitor */}
+                <div className="p-3 bg-slate-950/90 rounded-xl border border-slate-800 font-mono text-base relative overflow-hidden">
+                  <div className="flex justify-between items-center mb-1 text-[11px] text-slate-400 font-sans">
+                    <span className="flex items-center gap-1 font-semibold uppercase tracking-wider text-purple-400">
+                      <Sparkles size={13} /> Tablet Script Monitor
+                    </span>
+                    <span>
+                      Char: {charIndex} / {activeTestText.length}
+                    </span>
+                  </div>
+                  <div className="leading-relaxed">
+                    <span className="text-slate-500">{inputText}</span>
+                    {charIndex < activeTestText.length && (
+                      <span className="bg-purple-600/40 text-white border-b-2 border-purple-400 px-0.5 animate-pulse">
+                        {activeTestText[charIndex] === ' ' ? '⎵' : activeTestText[charIndex]}
+                      </span>
+                    )}
+                    <span className="text-slate-400">{activeTestText.slice(charIndex + 1)}</span>
                   </div>
                 </div>
 
-                {/* Device Mode Selector Toolbar */}
-                <div className="flex justify-between items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-900 flex-wrap gap-2">
-                  <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase ml-1 flex items-center gap-1.5">
-                    <KeyboardIcon size={14} className="text-purple-400" /> Device Target Preset
-                  </span>
-                  <div className="flex gap-2">
-                    {DEVICE_PRESETS.map((preset) => {
-                      const isActive = deviceMode === preset.id;
-                      let Icon = LaptopIcon;
-                      if (preset.id === 'mobile') Icon = Smartphone;
-                      if (preset.id === 'tablet') Icon = Tablet;
-
-                      return (
-                        <button
-                          key={preset.id}
-                          onClick={() => {
-                            setDeviceMode(preset.id);
-                            handleReset();
-                          }}
-                          className={`btn py-1.5 px-3.5 text-xs rounded-lg border font-medium transition-all ${
-                            isActive
-                              ? 'bg-purple-600/10 text-purple-400 border-purple-500/30 shadow-lg shadow-purple-500/5'
-                              : 'bg-slate-900/40 text-slate-500 border-slate-800/80 hover:text-slate-300 hover:border-slate-700'
-                          }`}
-                        >
-                          <Icon size={13} />
-                          {preset.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Simulated Device Frame Wrapper */}
-                <div className="flex justify-center w-full py-4 bg-slate-950/30 rounded-2xl border border-slate-900/60 overflow-hidden">
-                  <div className={`keyboard-device-wrapper device-frame-${deviceMode} transition-all duration-300 w-full`}>
-                    {deviceMode === 'mobile' && (
-                      <div className="device-notch-speaker">
-                        <div className="notch-speaker-bar"></div>
-                      </div>
-                    )}
-                    <Keyboard
-                      agent={spatialAgent}
-                      recentTouches={recentTouches}
-                      showVoronoi={showVoronoi}
-                      showVectors={showVectors}
-                      showTouches={showTouches}
-                      showOverlays={showOverlays}
-                      isSmoothingEnabled={isSmoothingEnabled}
-                      onKeyTap={handleKeyboardTap}
-                      isShiftActive={isShiftActive}
-                      correctionFlashKey={correctionFlashKey}
-                    />
-                    {deviceMode === 'mobile' && (
-                      <div className="device-home-indicator">
-                        <div className="home-indicator-bar"></div>
-                      </div>
-                    )}
-                  </div>
+                {/* Tablet Keyboard */}
+                <div className="p-2 bg-slate-950/80 rounded-xl border border-slate-800/80">
+                  <Keyboard
+                    agent={spatialAgent}
+                    recentTouches={recentTouches}
+                    showVoronoi={showVoronoi}
+                    showVectors={showVectors}
+                    showTouches={showTouches}
+                    showOverlays={showOverlays}
+                    isSmoothingEnabled={isSmoothingEnabled}
+                    onKeyTap={handleKeyboardTap}
+                    isShiftActive={isShiftActive}
+                    correctionFlashKey={correctionFlashKey}
+                  />
                 </div>
               </div>
-            </>
-          )}
-        </div>
+            )}
 
-        {/* Right Side: Simulation & Parameter Consoles */}
-        <div className="flex flex-col gap-6">
-          {/* Analytics Panel */}
-          <Analytics stats={stats} history={metricHistory} />
+            {/* ── 3. PHONE HARDWARE CHASSIS ── */}
+            {deviceMode === 'mobile' && (
+              <div className="device-chassis-phone w-full">
+                {/* Dynamic Island Pill */}
+                <div className="flex justify-center w-full">
+                  <div className="wa-dynamic-island">
+                    <span className="wa-island-dot"></span>
+                  </div>
+                </div>
 
-          {/* Backspace Correction Counter */}
-          {backspaceCorrectionCount > 0 && (
-            <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-red-950/30 border border-red-800/30 text-xs">
-              <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse flex-shrink-0" />
-              <span className="text-red-300 font-semibold font-mono">
-                {backspaceCorrectionCount} Backspace Correction{backspaceCorrectionCount !== 1 ? 's' : ''}
+                <div className="flex justify-between items-center px-1 text-[11px] font-mono text-slate-400">
+                  <span>Smartphone 6.1″ Portrait • 410px Viewport</span>
+                  <span className="text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20 text-[10px]">
+                    Thumb Hitbox • α = 0.08
+                  </span>
+                </div>
+
+                {/* Target Script Monitor */}
+                <div className="p-3 bg-slate-950/90 rounded-xl border border-slate-800 font-mono text-sm relative overflow-hidden">
+                  <div className="flex justify-between items-center mb-1 text-[10px] text-slate-400 font-sans">
+                    <span className="flex items-center gap-1 font-semibold uppercase tracking-wider text-purple-400">
+                      <Sparkles size={12} /> Mobile Script Monitor
+                    </span>
+                    <span>
+                      {charIndex} / {activeTestText.length}
+                    </span>
+                  </div>
+                  <div className="leading-relaxed">
+                    <span className="text-slate-500">{inputText}</span>
+                    {charIndex < activeTestText.length && (
+                      <span className="bg-purple-600/40 text-white border-b-2 border-purple-400 px-0.5 animate-pulse">
+                        {activeTestText[charIndex] === ' ' ? '⎵' : activeTestText[charIndex]}
+                      </span>
+                    )}
+                    <span className="text-slate-400">{activeTestText.slice(charIndex + 1)}</span>
+                  </div>
+                </div>
+
+                {/* Phone Keyboard Canvas */}
+                <div className="p-1.5 bg-slate-950/80 rounded-xl border border-slate-800/80">
+                  <Keyboard
+                    agent={spatialAgent}
+                    recentTouches={recentTouches}
+                    showVoronoi={showVoronoi}
+                    showVectors={showVectors}
+                    showTouches={showTouches}
+                    showOverlays={showOverlays}
+                    isSmoothingEnabled={isSmoothingEnabled}
+                    onKeyTap={handleKeyboardTap}
+                    isShiftActive={isShiftActive}
+                    correctionFlashKey={correctionFlashKey}
+                  />
+                </div>
+
+                {/* Home Indicator Swipe Bar */}
+                <div className="wa-home-bar">
+                  <div></div>
+                </div>
+              </div>
+            )}
+
+            {/* Canvas Display View Options */}
+            <div className="flex items-center justify-between w-full px-4 py-2.5 bg-slate-900/60 rounded-xl border border-slate-800/80 text-xs text-slate-400 flex-wrap gap-2">
+              <span className="font-semibold text-slate-300 uppercase tracking-wider text-[11px]">
+                Visualization Layers:
               </span>
-              <span className="text-red-500 ml-auto">RL ⊖ active</span>
+              <div className="flex items-center gap-4 flex-wrap">
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-white" title="Smoothens high-frequency tremor coordinates">
+                  <input
+                    type="checkbox"
+                    checked={isSmoothingEnabled}
+                    onChange={(e) => setIsSmoothingEnabled(e.target.checked)}
+                    className="accent-purple-600 w-3 h-3"
+                  />
+                  Tremor Filter
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                  <input
+                    type="checkbox"
+                    checked={showVoronoi}
+                    onChange={(e) => setShowVoronoi(e.target.checked)}
+                    className="accent-purple-600 w-3 h-3"
+                  />
+                  Voronoi Cells
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                  <input
+                    type="checkbox"
+                    checked={showVectors}
+                    onChange={(e) => setShowVectors(e.target.checked)}
+                    className="accent-purple-600 w-3 h-3"
+                  />
+                  Drift Vectors
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                  <input
+                    type="checkbox"
+                    checked={showTouches}
+                    onChange={(e) => setShowTouches(e.target.checked)}
+                    className="accent-purple-600 w-3 h-3"
+                  />
+                  Touch Scatter
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-white" title="Display secondary symbol hints on keys">
+                  <input
+                    type="checkbox"
+                    checked={showOverlays}
+                    onChange={(e) => setShowOverlays(e.target.checked)}
+                    className="accent-purple-600 w-3 h-3"
+                  />
+                  Symbol Badges
+                </label>
+              </div>
             </div>
-          )}
+          </div>
 
-          {/* Simulation controller */}
-          <SimulationControls
-            currentProfile={currentProfile}
-            onProfileChange={(prof) => {
-              setCurrentProfile(prof);
-              handleReset();
-            }}
-            isRunning={isRunning}
-            onToggleStartPause={() => setIsRunning(!isRunning)}
-            onReset={handleReset}
-            onFastTrain={handleFastTrain}
-            simSpeed={simSpeed}
-            onSpeedChange={setSimSpeed}
-            selectedText={selectedTextOption}
-            onTextChange={handleTextChange}
-            customText={customText}
-            onCustomTextChange={(t) => {
-              setCustomText(t);
-              handleReset();
-            }}
+          {/* Right Side: Simulation & Parameter Consoles */}
+          <div className="flex flex-col gap-6 w-full">
+            {/* Analytics Panel with Live Convergence Curves */}
+            <Analytics stats={stats} history={metricHistory} rlAlgorithm={rlAlgorithm} />
 
-          />
+            {/* Backspace Correction Counter */}
+            {backspaceCorrectionCount > 0 && (
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-red-950/30 border border-red-800/30 text-xs">
+                <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse flex-shrink-0" />
+                <span className="text-red-300 font-semibold font-mono">
+                  {backspaceCorrectionCount} Backspace Correction{backspaceCorrectionCount !== 1 ? 's' : ''}
+                </span>
+                <span className="text-red-500 ml-auto font-mono text-[11px]">
+                  RL Anti-Gradient ⊖ Active
+                </span>
+              </div>
+            )}
 
-          {/* Hyperparameter configurator */}
-          <ConfigPanel
-            spatialParams={spatialParams}
-            onSpatialParamsChange={setSpatialParams}
-            onResetToDefaults={handleResetParams}
-          />
-        </div>
-      </div>
+            {/* Simulation Controller */}
+            <SimulationControls
+              currentProfile={currentProfile}
+              onProfileChange={(prof) => {
+                setCurrentProfile(prof);
+                handleReset();
+              }}
+              isRunning={isRunning}
+              onToggleStartPause={() => setIsRunning(!isRunning)}
+              onReset={handleReset}
+              onFastTrain={handleFastTrain}
+              simSpeed={simSpeed}
+              onSpeedChange={setSimSpeed}
+              selectedText={selectedTextOption}
+              onTextChange={handleTextChange}
+              customText={customText}
+              onCustomTextChange={(t) => {
+                setCustomText(t);
+                handleReset();
+              }}
+              rlAlgorithm={rlAlgorithm}
+              onAlgorithmChange={handleAlgorithmChange}
+            />
+
+            {/* Hyperparameter Configurator */}
+            <ConfigPanel
+              spatialParams={spatialParams}
+              onSpatialParamsChange={setSpatialParams}
+              onResetToDefaults={handleResetParams}
+              rlAlgorithm={rlAlgorithm}
+              onAlgorithmChange={handleAlgorithmChange}
+            />
+          </div>
+        </main>
+      )}
     </div>
   );
 }

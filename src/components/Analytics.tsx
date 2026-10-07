@@ -1,20 +1,23 @@
 import React from 'react';
-import type { TypingStats } from '../rl/types';
-import { Zap, AlertTriangle, TrendingUp } from 'lucide-react';
+import type { TypingStats, RLAlgorithmType } from '../rl/types';
+import { Zap, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
 
 interface MetricPoint {
   wpm: number;
   errorRate: number;
   stability: number; // Mean spatial drift from default
-  savedSwitches: number;
+  reward: number;    // Cumulative RL return
+  tdError: number;   // Temporal Difference error
+  savedSwitches?: number;
 }
 
 interface AnalyticsProps {
   stats: TypingStats;
   history: MetricPoint[];
+  rlAlgorithm?: RLAlgorithmType;
 }
 
-export const Analytics: React.FC<AnalyticsProps> = ({ stats, history }) => {
+export const Analytics: React.FC<AnalyticsProps> = ({ stats, history, rlAlgorithm = 'actor-critic' }) => {
   // SVG Chart helper
   const renderLineChart = (
     data: number[],
@@ -58,13 +61,13 @@ export const Analytics: React.FC<AnalyticsProps> = ({ stats, history }) => {
       <div className="flex flex-col gap-1">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-24 overflow-visible">
           <defs>
-            <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={`grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={color} stopOpacity="0.25" />
               <stop offset="100%" stopColor={color} stopOpacity="0.0" />
             </linearGradient>
           </defs>
           {/* Fill Area */}
-          <path d={fillD} fill={`url(#grad-${color})`} />
+          <path d={fillD} fill={`url(#grad-${color.replace('#', '')})`} />
           {/* Sparkline */}
           <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           {/* Indicator Dot */}
@@ -94,7 +97,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ stats, history }) => {
         <h2 className="flex items-center gap-2 mb-1">
           <TrendingUp size={20} className="text-purple-400" /> Live Analytics & Convergence
         </h2>
-        <p className="text-sm">Real-time performance indicators and model training curves.</p>
+        <p className="text-sm">Real-time performance indicators and Actor-Critic RL training curves.</p>
       </div>
 
       {/* Top Level Grid Stats */}
@@ -129,6 +132,15 @@ export const Analytics: React.FC<AnalyticsProps> = ({ stats, history }) => {
           </div>
         </div>
 
+        <div className="p-3 bg-slate-950/60 border border-slate-900 rounded-xl flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400">
+            <Activity size={20} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase text-slate-500 font-semibold">RL Return</div>
+            <div className="text-xl font-bold font-mono text-white">{stats.cumulativeReward.toFixed(1)}</div>
+          </div>
+        </div>
       </div>
 
       {/* Charts Section */}
@@ -157,19 +169,30 @@ export const Analytics: React.FC<AnalyticsProps> = ({ stats, history }) => {
           )}
         </div>
 
-        {/* Saved Switch Actions Chart */}
+        {/* RL Cumulative Return */}
         <div>
-          <div className="text-xs font-semibold text-slate-400 mb-2">CUMULATIVE SWITCHES SAVED</div>
+          <div className="text-xs font-semibold text-slate-400 mb-2 flex items-center justify-between">
+            <span>
+              {rlAlgorithm === 'dqn'
+                ? 'DQN BELLMAN RETURN'
+                : rlAlgorithm === 'ppo'
+                ? 'PPO CLIPPED POLICY RETURN'
+                : 'ACTOR-CRITIC POLICY RETURN'}
+            </span>
+            <span className="text-[10px] text-cyan-400 font-mono">
+              {rlAlgorithm === 'dqn' ? 'DQN Replay' : rlAlgorithm === 'ppo' ? 'PPO Clipped' : 'A2C Online'}
+            </span>
+          </div>
           {renderLineChart(
-            history.map((h) => h.savedSwitches),
+            history.map((h) => h.reward),
             '#06b6d4',
-            0,
-            10,
-            (v) => `${v.toFixed(0)} saved`
+            -10,
+            20,
+            (v) => `${v.toFixed(1)} pts`
           )}
           <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
-            <span>Manual switches made: {stats.manualSwitches}</span>
-            <span>RL predicted switches: {stats.switchesSaved}</span>
+            <span>Last Reward: {stats.lastReward > 0 ? `+${stats.lastReward.toFixed(2)}` : stats.lastReward.toFixed(2)}</span>
+            <span>Running TD Error (|δ|): {stats.meanTdError.toFixed(3)}</span>
           </div>
         </div>
 
@@ -184,7 +207,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ stats, history }) => {
             (v) => `${v.toFixed(2)}px`
           )}
           <div className="text-[10px] text-slate-500 mt-2 leading-relaxed">
-            As the stability curve plateaus, the spatial RL agent has aligned coordinates with user touch tendencies.
+            As the stability curve plateaus, the Actor-Critic policy reaches optimal spatial equilibrium for user motor tendencies.
           </div>
         </div>
       </div>

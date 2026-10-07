@@ -1,17 +1,22 @@
 import React from 'react';
-import type { RLParams } from '../rl/types';
-import { Sliders, RefreshCw } from 'lucide-react';
+import type { RLParams, RLAlgorithmType } from '../rl/types';
+import { ALGORITHM_OPTIONS } from '../rl/types';
+import { Sliders, RefreshCw, Cpu } from 'lucide-react';
 
 interface ConfigPanelProps {
   spatialParams: RLParams;
   onSpatialParamsChange: (params: RLParams) => void;
   onResetToDefaults: () => void;
+  rlAlgorithm?: RLAlgorithmType;
+  onAlgorithmChange?: (algo: RLAlgorithmType) => void;
 }
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({
   spatialParams,
   onSpatialParamsChange,
   onResetToDefaults,
+  rlAlgorithm = 'actor-critic',
+  onAlgorithmChange,
 }) => {
   const handleSpatialChange = (key: keyof RLParams, val: number) => {
     onSpatialParamsChange({
@@ -19,6 +24,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
       [key]: val,
     });
   };
+
+  const currentAlgoMeta = ALGORITHM_OPTIONS.find((a) => a.id === rlAlgorithm) || ALGORITHM_OPTIONS[0];
 
   return (
     <div className="glass-panel card flex flex-col gap-6" style={{ height: '100%' }}>
@@ -32,22 +39,45 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
         <button
           onClick={onResetToDefaults}
           title="Restore default parameters"
-          className="p-1 bg-slate-900 border border-slate-800 rounded hover:text-white transition-colors"
+          className="btn-icon-refresh"
         >
           <RefreshCw size={14} />
         </button>
       </div>
 
-      {/* Spatial RL Agent (Voronoi) */}
+      {/* Algorithm Engine Selector */}
+      {onAlgorithmChange && (
+        <div className="flex flex-col gap-2 p-3 bg-slate-950/70 rounded-xl border border-slate-800/80">
+          <label className="form-label text-slate-300 font-semibold text-xs uppercase tracking-wider flex items-center gap-1.5">
+            <Cpu size={14} className="text-cyan-400" /> Active RL Algorithm Engine
+          </label>
+          <select
+            value={rlAlgorithm}
+            onChange={(e) => onAlgorithmChange(e.target.value as RLAlgorithmType)}
+            className="sim-select"
+          >
+            {ALGORITHM_OPTIONS.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.name}
+              </option>
+            ))}
+          </select>
+          <div className="text-[11px] text-cyan-300/80 mt-1 leading-relaxed">
+            <strong>{currentAlgoMeta.tagline}</strong>: {currentAlgoMeta.description}
+          </div>
+        </div>
+      )}
+
+      {/* Spatial Actor-Critic RL Agent */}
       <div className="flex flex-col gap-4">
         <h3 className="text-xs uppercase tracking-wider text-slate-500 font-semibold border-b border-slate-900 pb-1">
-          Spatial Voronoi Agent
+          {rlAlgorithm === 'dqn' ? 'DQN Hyperparameters' : rlAlgorithm === 'ppo' ? 'PPO Hyperparameters' : 'Actor-Critic Hyperparameters'}
         </h3>
 
         {/* Spatial Learning Rate */}
         <div className="form-group">
           <div className="flex justify-between text-xs font-mono">
-            <span>Learning Rate (α)</span>
+            <span>Actor Learning Rate (α)</span>
             <span className="text-purple-400 font-semibold">{spatialParams.learningRate.toFixed(2)}</span>
           </div>
           <input
@@ -60,7 +90,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
             className="range-slider"
           />
           <div className="text-[10px] text-slate-500 leading-normal">
-            Controls how fast key centers shift toward user coordinates on nearby typos.
+            Policy Gradient step size: controls how fast key centers shift toward user coordinates.
           </div>
         </div>
 

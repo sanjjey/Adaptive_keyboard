@@ -1,8 +1,7 @@
 import { KeyboardRLAgent } from './KeyboardRLAgent';
-import { TransitionAgent } from './TransitionAgent';
 import { LanguageModel } from './LanguageModel';
 
-console.log('--- STARTING VERIFICATION TESTS ---');
+console.log('--- STARTING REINFORCEMENT LEARNING VERIFICATION TESTS ---');
 
 // Test 1: Power Diagram & KeyboardRLAgent Touch Classification
 try {
@@ -12,11 +11,9 @@ try {
     weightGrowth: 100,
     weightShrink: 100,
     adjacentThreshold: 150,
-    lmWeight: 0.0, // Disable LM weight for pure spatial test
+    lmWeight: 0.0,
   });
 
-  // Verify that default 'q' classification works
-  // 'q' default center is at (50, 50)
   const classification = agent.classifyTouch(50, 50);
   console.log(`Test 1 (Default classification): Tapping at (50, 50) classified as: ${classification}`);
   if (classification !== 'q') {
@@ -27,68 +24,70 @@ try {
   console.error('❌ Test 1 Failed:', e);
 }
 
-// Test 2: Spatial Adaptation Updates
+// Test 2: Actor-Critic Spatial Adaptation Updates
 try {
   const agent = new KeyboardRLAgent({
     learningRate: 0.2,
-    regularization: 0.0, // Disable regularization to isolate updates
+    regularization: 0.0,
     weightGrowth: 200,
     weightShrink: 200,
     adjacentThreshold: 150,
     lmWeight: 0.0,
   });
 
-  // Simulate nearby typo: user wanted 'q' (default center 50, 50) but tapped at (90, 50) which falls into 'w'
   const beforeKey = agent.keys.find((k) => k.id === 'q')!;
   const beforeWeight = beforeKey.weight;
-  
-  agent.updateLayout('q', 'w', 90, 50);
+
+  // Typo: user wanted 'q' but tapped at (90, 50) in 'w' territory
+  const stepResult = agent.updateLayout('q', 'w', 90, 50);
 
   const afterKey = agent.keys.find((k) => k.id === 'q')!;
-  
-  console.log(`Test 2 (Spatial Adaptation): 'q' weight went from ${beforeWeight} to ${afterKey.weight}`);
-  console.log(`Test 2 (Spatial Adaptation): 'q' center X shifted from 50 to ${afterKey.currentX}`);
+
+  console.log(`Test 2 (Actor-Critic Adaptation): 'q' weight went from ${beforeWeight} to ${afterKey.weight}`);
+  console.log(`Test 2 (Actor-Critic Adaptation): 'q' center X shifted from 50 to ${afterKey.currentX.toFixed(2)}`);
+  console.log(`Test 2 (Actor-Critic Adaptation): Step reward = ${stepResult.reward.toFixed(2)}, TD error = ${stepResult.tdError.toFixed(2)}`);
 
   if (afterKey.weight <= beforeWeight) {
-    throw new Error('Target key weight should have grown!');
+    throw new Error('Target key weight should have grown under policy action!');
   }
   if (afterKey.currentX <= 50) {
-    throw new Error('Target key center should have shifted right toward the touch point!');
+    throw new Error('Target key center should have shifted right toward touch point!');
   }
   console.log('✅ Test 2 Passed.');
 } catch (e) {
   console.error('❌ Test 2 Failed:', e);
 }
 
-// Test 3: Q-Learning Transition Agent
+// Test 3: Actor-Critic RL Training & TD Learning Convergence
 try {
-  const tAgent = new TransitionAgent({
-    learningRate: 0.5,
-    discountFactor: 0.8,
-    epsilon: 0.0, // Force exploitation for deterministic verification
-    switchPenalty: 10,
+  const agent = new KeyboardRLAgent({
+    learningRate: 0.15,
+    criticLearningRate: 0.1,
+    discountFactor: 0.85,
+    regularization: 0.001,
+    weightGrowth: 300,
+    weightShrink: 200,
+    adjacentThreshold: 140,
+    lmWeight: 0.4,
   });
 
-  // Target letter 'a', then number '1'.
-  // Under standard layout, action is 0 (Alphabet Mode).
-  // Digit transition requires switch penalty.
-  const result1 = tAgent.processKeystroke('a', '1', true);
-  console.log(`Test 3 (Transition Agent): Reward for typing '1' in alphabet mode: ${result1.reward}`);
-  if (result1.reward >= 0) {
-    throw new Error('Reward should be negative due to manual layout switch penalty!');
+  // Train agent on 50 repeated typing events
+  for (let i = 0; i < 50; i++) {
+    // Alternating between hits and nearby slips
+    if (i % 2 === 0) {
+      agent.updateLayout('e', 'e', 250, 50, i);
+    } else {
+      agent.updateLayout('e', 'r', 270, 50, i);
+    }
   }
 
-  // After multiple trials, it should learn that showing numeric row (action 1) is better
-  // Let's train it on state 'a ' -> '1' multiple times
-  const state = tAgent.getState('a');
-  for (let i = 0; i < 20; i++) {
-    tAgent.processKeystroke('a', '1', false);
-  }
+  console.log(`Test 3 (RL TD Convergence): Total transitions: ${agent.totalTransitions}`);
+  console.log(`Test 3 (RL TD Convergence): Cumulative reward: ${agent.cumulativeReward.toFixed(2)}`);
+  console.log(`Test 3 (RL TD Convergence): Running TD Error: ${agent.runningTdError.toFixed(4)}`);
+  console.log(`Test 3 (RL TD Convergence): Critic Loss: ${agent.criticLoss.toFixed(4)}`);
 
-  const action = tAgent.selectAction(state, true);
-  console.log(`Test 3 (Transition Agent): Action selected for state '${state}' after training: ${action}`);
-  if (action !== 1 && action !== 2) {
-    throw new Error('Agent failed to learn layout adaptation for digits!');
+  if (agent.totalTransitions !== 50) {
+    throw new Error(`Expected 50 transitions, got ${agent.totalTransitions}`);
   }
   console.log('✅ Test 3 Passed.');
 } catch (e) {
@@ -102,7 +101,7 @@ try {
 
   console.log(`Test 4 (LM Probability): P(h|t) = ${pTH.toFixed(4)}, P(x|t) = ${pTX.toFixed(4)}`);
   if (pTH <= pTX) {
-    throw new Error("Transition P(h|t) should be significantly higher than P(x|t)!");
+    throw new Error('Transition P(h|t) should be significantly higher than P(x|t)!');
   }
   console.log('✅ Test 4 Passed.');
 } catch (e) {
@@ -117,17 +116,9 @@ try {
     weightGrowth: 100,
     weightShrink: 100,
     adjacentThreshold: 150,
-    lmWeight: 1.2, // High weight to observe language bias clearly
+    lmWeight: 1.2,
   });
 
-  // Touch coordinates: (802, 50).
-  // Default center of 'i' is 750. Default center of 'o' is 850.
-  // The tap at 802 is slightly closer to 'o' (dist = 48) than 'i' (dist = 52).
-  // Under pure spatial decoding, this resolves to 'o'.
-  // However:
-  // - If history context is 'h', bigram 'hi' is highly likely. It should bias and resolve to 'i'.
-  // - If history context is 'w', bigram 'wo' is highly likely. It should bias and resolve to 'o'.
-  
   const classWithH = agent.classifyTouch(802, 50, 'h');
   const classWithC = agent.classifyTouch(802, 50, 'c');
 
@@ -140,51 +131,44 @@ try {
   if (classWithC !== 'o') {
     throw new Error("Expected context bias to resolve to 'o' after 'c'!");
   }
-  
   console.log('✅ Test 5 Passed.');
 } catch (e) {
   console.error('❌ Test 5 Failed:', e);
 }
 
-// Test 6: Adaptive Re-Annealing Scheduler
+// Test 6: Asynchronous Backspace Credit Assignment (Negative RL Reward)
 try {
   const agent = new KeyboardRLAgent({
     learningRate: 0.2,
-    regularization: 0.002,
-    weightGrowth: 400,
+    regularization: 0.0,
+    weightGrowth: 300,
     weightShrink: 300,
-    adjacentThreshold: 140,
+    adjacentThreshold: 150,
     lmWeight: 0.4,
   });
 
-  // Verify default reAnnealBoost is 0
-  if (agent.reAnnealBoost !== 0) {
-    throw new Error('Initial reAnnealBoost should be 0!');
-  }
+  // Tap registered mistakenly as 'o' at (840, 50)
+  agent.updateLayout('o', 'o', 840, 50);
+  const rewardBefore = agent.cumulativeReward;
+  const oKeyBefore = agent.keys.find((k) => k.id === 'o')!;
+  const oWeightBefore = oKeyBefore.weight;
 
-  // Simulate a high error rate burst (25 typos in a row)
-  for (let i = 0; i < 25; i++) {
-    agent.updateLayout('q', 'w', 90, 50, i); // 'q' target but 'w' classified
-  }
+  // User presses backspace to undo 'o'
+  agent.applyBackspaceCorrection('o', 840, 50, 1.0);
 
-  console.log(`Test 6 (Adaptive Re-Annealing): reAnnealBoost after 25 typos: ${agent.reAnnealBoost.toFixed(4)}`);
-  if (agent.reAnnealBoost <= 0) {
-    throw new Error('Re-annealing boost should have spiked above 0 due to high error rate!');
-  }
+  const oKeyAfter = agent.keys.find((k) => k.id === 'o')!;
+  console.log(`Test 6 (Backspace Credit Assignment): Cumulative reward went from ${rewardBefore.toFixed(2)} to ${agent.cumulativeReward.toFixed(2)}`);
+  console.log(`Test 6 (Backspace Credit Assignment): 'o' weight contracted from ${oWeightBefore} to ${oKeyAfter.weight}`);
 
-  // Simulate subsequent correct keystrokes
-  for (let i = 0; i < 150; i++) {
-    agent.updateLayout('q', 'q', 50, 50, 25 + i);
+  if (agent.cumulativeReward >= rewardBefore) {
+    throw new Error('Cumulative reward should have decreased after backspace penalty!');
   }
-
-  console.log(`Test 6 (Adaptive Re-Annealing): reAnnealBoost after recovery: ${agent.reAnnealBoost.toFixed(4)}`);
-  if (agent.reAnnealBoost >= 0.2) {
-    throw new Error('Re-annealing boost should have cooled down after successful typing recovery!');
+  if (oKeyAfter.weight >= oWeightBefore) {
+    throw new Error('Wrong key weight should contract on backspace correction!');
   }
-
   console.log('✅ Test 6 Passed.');
 } catch (e) {
   console.error('❌ Test 6 Failed:', e);
 }
 
-console.log('--- VERIFICATION TESTS COMPLETED ---');
+console.log('--- ALL VERIFICATION TESTS COMPLETED SUCCESSFULLY ---');

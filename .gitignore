@@ -24,3 +24,18 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# AI Agent Configs, Rules & Memory Files
+.agents/
+.cursor/
+.github/
+.clinerules*
+.cursorrules*
+.windsurfrules*
+*rules
+AGENTS.md
+agents.md
+CLAUDE.md
+claude.md
+GEMINI.md
+gemini.md
