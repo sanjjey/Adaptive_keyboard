@@ -5,7 +5,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue.svg?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.2-61dafb.svg?logo=react)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.0-646CFF.svg?logo=vite)](https://vitejs.dev/)
-[![TailwindCSS](https://img.shields.io/badge/Tailwind-Styling-38bdf8.svg?logo=tailwindcss)](https://tailwindcss.com/)
+[![Vanilla CSS](https://img.shields.io/badge/CSS3-Vanilla_Design_Tokens-1572B6.svg?logo=css3)](src/index.css)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
@@ -22,10 +22,13 @@
 4. [Hardware Layout Modes (Laptop, Tablet, Phone)](#-hardware-layout-modes)
 5. [WhatsApp Messenger Simulator (Live Testbed Tab)](#-whatsapp-messenger-simulator-tab)
 6. [Project Structure](#-project-structure)
-7. [Setup & Installation](#-setup--installation)
-8. [Running & Verification Suite](#-running--verification-suite)
-9. [Hyperparameter Reference](#-hyperparameter-reference)
-10. [License](#-license)
+7. [Multi-Algorithm RL Suite (A2C, DQN, PPO)](#-multi-algorithm-reinforcement-learning-suite)
+8. [Empirical 3-Way Benchmark Results](#-empirical-3-way-algorithm-benchmark-600-keystroke-evaluation)
+9. [Running on iPhone / Mobile](#-running-on-iphone--mobile)
+10. [Setup & Installation](#-setup--installation)
+11. [Running & Verification Suite](#-running--verification-suite)
+12. [Hyperparameter Reference](#-hyperparameter-reference)
+13. [License](#-license)
 
 ---
 
@@ -199,12 +202,13 @@ adaptiveRL_keyboard/
 │   │   ├── SimulationControls.tsx # Typer profiles & phrase benchmark player
 │   │   └── WhatsAppChat.tsx     # Dedicated WhatsApp messenger simulator
 │   └── rl/
-│       ├── KeyboardRLAgent.ts   # Core Actor-Critic MDP RL Agent
+│       ├── KeyboardRLAgent.ts   # Core Multi-Algorithm RL Agent (A2C, DQN, PPO)
 │       ├── LanguageModel.ts     # Laplace-smoothed English bigram prior lookup
 │       ├── PowerDiagram.ts      # Sutherland-Hodgman Power Diagram clipping
 │       ├── TyperSimulator.ts    # Synthetic motor noise, tremor, & fatigue simulator
-│       ├── types.ts             # TypeScript definitions for RL parameters & stats
+│       ├── types.ts             # TypeScript definitions for RL parameters, algorithms & stats
 │       ├── verify.ts            # Headless RL test suite & convergence tests
+│       ├── benchmark.ts         # Multi-algorithm comparative benchmark runner
 │       └── index.ts             # Modular package exports
 ├── package.json
 ├── tsconfig.json
