@@ -7,5 +7,11 @@ export default defineConfig({
   server: {
     host: true, // Listen on all network interfaces (0.0.0.0) for iPhone/mobile access
     port: 5173,
+    allowedHosts: true, // Allow all tunnel hosts (*.loca.lt, ngrok, etc.)
+  },
+  preview: {
+    host: true,
+    port: 5173,
+    allowedHosts: true,
   },
 })

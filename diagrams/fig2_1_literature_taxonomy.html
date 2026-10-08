@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #ffffff;
+    color: #1e293b;
+    padding: 30px;
+    width: 1100px;
+  }
+  .container {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 24px;
+    background: #ffffff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  }
+  .title-block {
+    text-align: center;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 14px;
+  }
+  .title-block h2 {
+    font-size: 22px;
+    color: #0f172a;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .title-block p {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 4px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .col-card {
+    border-radius: 10px;
+    padding: 16px;
+    border: 1.5px solid #e2e8f0;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+  }
+  .col-card.c1 { border-top: 4px solid #3b82f6; }
+  .col-card.c2 { border-top: 4px solid #8b5cf6; }
+  .col-card.c3 { border-top: 4px solid #f59e0b; }
+  .col-card.c4 { border-top: 4px solid #10b981; }
+  .card-header {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .c1 .card-header { color: #1d4ed8; }
+  .c2 .card-header { color: #6d28d9; }
+  .c3 .card-header { color: #b45309; }
+  .c4 .card-header { color: #047857; }
+  .citation {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    background: #e2e8f0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+  .features-list {
+    list-style: none;
+    font-size: 12px;
+    color: #334155;
+    flex-grow: 1;
+  }
+  .features-list li {
+    margin-bottom: 8px;
+    position: relative;
+    padding-left: 14px;
+    line-height: 1.4;
+  }
+  .features-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+  }
+  .c1 .features-list li::before { color: #3b82f6; }
+  .c2 .features-list li::before { color: #8b5cf6; }
+  .c3 .features-list li::before { color: #f59e0b; }
+  .c4 .features-list li::before { color: #10b981; }
+  .limitation-box {
+    margin-top: 10px;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+  .convergence-banner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #ffffff;
+    border-radius: 10px;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+  }
+  .banner-left h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #38bdf8;
+    margin-bottom: 4px;
+  }
+  .banner-left p {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.4;
+    max-width: 720px;
+  }
+  .banner-tags {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: right;
+  }
+  .tag {
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title-block">
+    <h2>Taxonomy of Related Work & Research Evolution</h2>
+    <p>Comparative Mapping of Theoretical Foundations, Interface Adaptation Paradigms, and Proposed Architecture</p>
+  </div>
+
+  <div class="grid">
+    <!-- Col 1 -->
+    <div class="col-card c1">
+      <div class="card-header">1. Static & Probabilistic Keyboards</div>
+      <span class="citation">MacKenzie & Soukoreff (2002), Goodman (2002)</span>
+      <ul class="features-list">
+        <li><strong>Bivariate Gaussian Modeling:</strong> Analyzed 2D touch endpoint distributions across standard QWERTY keys.</li>
+        <li><strong>Bigram / N-Gram Priors:</strong> Linguistic context disambiguates boundary touch landings.</li>
+        <li><strong>Autocorrect Reliance:</strong> Errors fixed retroactively after word completion.</li>
+      </ul>
+      <div class="limitation-box">
+        <strong>Limitation:</strong> Static hitboxes; cannot adapt to thumb reach drift or individual hand anatomy.
+      </div>
+    </div>
+
+    <!-- Col 2 -->
+    <div class="col-card c2">
+      <div class="card-header">2. Spatial Personalization</div>
+      <span class="citation">Sivek & Riley (2022) [Gboard]</span>
+      <ul class="features-list">
+        <li><strong>On-Device User Profiles:</strong> Models consistent individual touch offsets (X-Y centroids).</li>
+        <li><strong>Postural Awareness:</strong> Compensates for one-handed thumb vs. two-thumb rotational variance.</li>
+        <li><strong>Significant CER Reduction:</strong> Proved personalized spatial decoders outperform static bounds.</li>
+      </ul>
+      <div class="limitation-box">
+        <strong>Limitation:</strong> Uses offline gradient batching; lacks active online reinforcement feedback loops.
+      </div>
+    </div>
+
+    <!-- Col 3 -->
+    <div class="col-card c3">
+      <div class="card-header">3. Ability-Based & Assistive HCI</div>
+      <span class="citation">Mitchell et al. (2022), Aurenhammer (1987)</span>
+      <ul class="features-list">
+        <li><strong>Ability-Based Design:</strong> Interfaces mold to user capabilities rather than forcing user conformity.</li>
+        <li><strong>Tremor Accommodation:</strong> Expanding target bounds for users with motor impairments.</li>
+        <li><strong>Power Diagrams:</strong> Laguerre-Voronoi math enables non-overlapping space partitioning.</li>
+      </ul>
+      <div class="limitation-box">
+        <strong>Limitation:</strong> Often requires tedious manual user calibration or static profiling sessions.
+      </div>
+    </div>
+
+    <!-- Col 4 -->
+    <div class="col-card c4">
+      <div class="card-header">4. Human-in-the-Loop RL</div>
+      <span class="citation">Gao (2022) [UC Berkeley], Sutton & Barto (2018)</span>
+      <ul class="features-list">
+        <li><strong>Interaction as Environment:</strong> State incorporates user cadence, coordinates, and error history.</li>
+        <li><strong>Implicit Reward Feedback:</strong> Backspaces and error rates drive policy improvement.</li>
+        <li><strong>Continuous Policy Adaptation:</strong> Learns without pre-labeled offline training datasets.</li>
+      </ul>
+      <div class="limitation-box">
+        <strong>Limitation:</strong> Visual instability risk if layout transforms too aggressively during typing.
+      </div>
+    </div>
+  </div>
+
+  <div class="convergence-banner">
+    <div class="banner-left">
+      <h3>Proposed Solution: Actor-Critic Adaptive Keyboard with Laguerre-Voronoi Tessellation</h3>
+      <p>Unifies continuous reinforcement learning (Actor-Critic / DQN / PPO) with Laguerre-Voronoi power diagrams and Bayesian bigram priors. Enforces subtle geometric hitbox adaptations while preserving visual QWERTY stability and penalizing excessive layout shifts.</p>
+    </div>
+    <div class="banner-tags">
+      <span class="tag">Zero Visual Muscle Disruption</span>
+      <span class="tag">Asynchronous Credit Assignment</span>
+      <span class="tag">Sub-Millisecond On-Device Inference</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

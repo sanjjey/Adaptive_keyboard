@@ -269,9 +269,9 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center w-full py-2">
+    <div className="wa-chat-page-container flex flex-col items-center w-full">
       {/* ── Outer Smartphone Enclosure ── */}
-      <div className="wa-device-wrapper w-full max-w-[420px]">
+      <div className="wa-device-wrapper">
         <div className="wa-phone-chassis">
           {/* Status Bar with Dynamic Island */}
           <div className="wa-status-bar">
@@ -502,6 +502,7 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
                 onKeyTap={handleKeyTap}
                 isShiftActive={isShiftActive}
                 correctionFlashKey={localFlashKey || correctionFlashKey}
+                aspectMode="stretch"
               />
             </div>
 

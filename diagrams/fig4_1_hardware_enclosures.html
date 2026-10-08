@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #ffffff;
+    color: #0f172a;
+    padding: 24px;
+    width: 1100px;
+  }
+  .wrapper {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 24px;
+    background: #ffffff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 12px;
+  }
+  .header h2 {
+    font-size: 21px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .header p {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 3px;
+  }
+
+  .devices-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+
+  .device-card {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .device-badge {
+    align-self: flex-start;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+
+  .d1 .device-badge { background: #dbeafe; color: #1d4ed8; }
+  .d2 .device-badge { background: #fef3c7; color: #b45309; }
+  .d3 .device-badge { background: #f3e8ff; color: #7e22ce; }
+
+  .chassis-mockup {
+    width: 100%;
+    height: 190px;
+    background: #0f172a;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+    margin-bottom: 14px;
+  }
+
+  /* Specific chassis stylings */
+  .laptop-chassis {
+    border: 3px solid #64748b;
+    background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+    width: 95%;
+  }
+  .tablet-chassis {
+    border: 4px solid #475569;
+    border-radius: 14px;
+    width: 85%;
+  }
+  .phone-chassis {
+    border: 4px solid #334155;
+    border-radius: 20px;
+    width: 60%;
+  }
+  
+  .notch {
+    width: 38px;
+    height: 8px;
+    background: #000000;
+    border-radius: 10px;
+    position: absolute;
+    top: 6px;
+  }
+
+  .mock-screen {
+    width: 100%;
+    height: 80%;
+    background: #1e293b;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 6px;
+  }
+
+  .mock-keys {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .mock-row {
+    display: flex;
+    gap: 3px;
+    justify-content: center;
+  }
+  .mock-key {
+    background: #334155;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid #475569;
+  }
+
+  .device-info {
+    width: 100%;
+  }
+  .device-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 4px;
+  }
+  .device-specs {
+    font-size: 11px;
+    color: #475569;
+    line-height: 1.45;
+  }
+  .spec-tag {
+    font-weight: 600;
+    color: #0284c7;
+  }
+
+  .footer-summary {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.4;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h2>Figure 4.1: Adaptive Hardware Layout Enclosures Across Mobile & Computing Form Factors</h2>
+    <p>Seamlessly Calibrated Geometric Bounds and Pitch Tuning for Laptop Deck, Tablet Frame, and Smartphone Chassis</p>
+  </div>
+
+  <div class="devices-grid">
+    <!-- Device 1: Laptop -->
+    <div class="device-card d1">
+      <span class="device-badge">Desktop Enclosure</span>
+      <div class="chassis-mockup laptop-chassis">
+        <div class="mock-screen">
+          <div class="mock-keys">
+            <div class="mock-row">
+              <div class="mock-key" style="width: 22px;"></div>
+              <div class="mock-key" style="width: 22px;"></div>
+              <div class="mock-key" style="width: 22px;"></div>
+              <div class="mock-key" style="width: 22px;"></div>
+              <div class="mock-key" style="width: 22px;"></div>
+              <div class="mock-key" style="width: 22px;"></div>
+              <div class="mock-key" style="width: 22px;"></div>
+              <div class="mock-key" style="width: 22px;"></div>
+            </div>
+            <div class="mock-row">
+              <div class="mock-key" style="width: 24px;"></div>
+              <div class="mock-key" style="width: 24px;"></div>
+              <div class="mock-key" style="width: 24px;"></div>
+              <div class="mock-key" style="width: 24px;"></div>
+              <div class="mock-key" style="width: 24px;"></div>
+              <div class="mock-key" style="width: 24px;"></div>
+              <div class="mock-key" style="width: 24px;"></div>
+            </div>
+            <div class="mock-row">
+              <div class="mock-key" style="width: 80px; background: #38bdf8;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="device-info">
+        <div class="device-title">Laptop Deck (Aluminum)</div>
+        <div class="device-specs">
+          &bull; <span class="spec-tag">Viewport Width:</span> 1000px<br>
+          &bull; <span class="spec-tag">Key Pitch:</span> 100px<br>
+          &bull; <span class="spec-tag">Typing Dynamics:</span> Multi-finger tactile typing with minimal thumb rotational skew.<br>
+          &bull; <span class="spec-tag">Voronoi Policy:</span> Low drift bounds, expansive power weighting for high typing velocity.
+        </div>
+      </div>
+    </div>
+
+    <!-- Device 2: Tablet -->
+    <div class="device-card d2">
+      <span class="device-badge">Tablet Landscape</span>
+      <div class="chassis-mockup tablet-chassis">
+        <div class="mock-screen">
+          <div class="mock-keys">
+            <div class="mock-row">
+              <div class="mock-key" style="width: 18px;"></div>
+              <div class="mock-key" style="width: 18px;"></div>
+              <div class="mock-key" style="width: 18px;"></div>
+              <div class="mock-key" style="width: 18px;"></div>
+              <div class="mock-key" style="width: 18px;"></div>
+              <div class="mock-key" style="width: 18px;"></div>
+              <div class="mock-key" style="width: 18px;"></div>
+            </div>
+            <div class="mock-row">
+              <div class="mock-key" style="width: 20px;"></div>
+              <div class="mock-key" style="width: 20px;"></div>
+              <div class="mock-key" style="width: 20px;"></div>
+              <div class="mock-key" style="width: 20px;"></div>
+              <div class="mock-key" style="width: 20px;"></div>
+              <div class="mock-key" style="width: 20px;"></div>
+            </div>
+            <div class="mock-row">
+              <div class="mock-key" style="width: 60px; background: #fbbf24;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="device-info">
+        <div class="device-title">Tablet Frame (Ergonomic)</div>
+        <div class="device-specs">
+          &bull; <span class="spec-tag">Viewport Width:</span> 740px<br>
+          &bull; <span class="spec-tag">Key Pitch:</span> 78px<br>
+          &bull; <span class="spec-tag">Typing Dynamics:</span> Dual-thumb lateral reach across wide aspect ratios.<br>
+          &bull; <span class="spec-tag">Voronoi Policy:</span> Split bilateral Voronoi clusters; independent left/right thumb calibration.
+        </div>
+      </div>
+    </div>
+
+    <!-- Device 3: Smartphone -->
+    <div class="device-card d3">
+      <span class="device-badge">Smartphone Portrait</span>
+      <div class="chassis-mockup phone-chassis">
+        <div class="notch"></div>
+        <div class="mock-screen" style="margin-top: 10px; height: 75%;">
+          <div class="mock-keys">
+            <div class="mock-row">
+              <div class="mock-key" style="width: 11px;"></div>
+              <div class="mock-key" style="width: 11px;"></div>
+              <div class="mock-key" style="width: 11px;"></div>
+              <div class="mock-key" style="width: 11px;"></div>
+              <div class="mock-key" style="width: 11px;"></div>
+              <div class="mock-key" style="width: 11px;"></div>
+            </div>
+            <div class="mock-row">
+              <div class="mock-key" style="width: 12px;"></div>
+              <div class="mock-key" style="width: 12px;"></div>
+              <div class="mock-key" style="width: 12px;"></div>
+              <div class="mock-key" style="width: 12px;"></div>
+              <div class="mock-key" style="width: 12px;"></div>
+            </div>
+            <div class="mock-row">
+              <div class="mock-key" style="width: 35px; background: #c084fc;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="device-info">
+        <div class="device-title">Smartphone Chassis (Mobile)</div>
+        <div class="device-specs">
+          &bull; <span class="spec-tag">Viewport Width:</span> 410px<br>
+          &bull; <span class="spec-tag">Key Pitch:</span> 38px<br>
+          &bull; <span class="spec-tag">Typing Dynamics:</span> Single-thumb reach arc with pronounced diagonal drift.<br>
+          &bull; <span class="spec-tag">Voronoi Policy:</span> Tight clipping guards, asymmetric radius scaling for high-fatigue keys.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-summary">
+    <strong>Form Factor Invariance:</strong> The identical Actor-Critic and Laguerre-Voronoi core dynamically adapts across all three physical chassis dimensions without requiring hardware-specific retuning.
+  </div>
+</div>
+</body>
+</html>

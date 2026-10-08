@@ -14,6 +14,8 @@ interface KeyboardProps {
   isShiftActive?: boolean;
   /** Key id to flash red (backspace correction visual feedback) */
   correctionFlashKey?: string | null;
+  /** Aspect ratio mode: 'meet' for wide studio, 'stretch' for mobile drawer */
+  aspectMode?: 'meet' | 'stretch';
 }
 
 // Maps alphabet keys to symbol overlays
@@ -34,10 +36,12 @@ export const Keyboard: React.FC<KeyboardProps> = ({
   onKeyTap,
   isShiftActive = false,
   correctionFlashKey = null,
+  aspectMode = 'meet',
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [dragBuffer, setDragBuffer] = useState<{ x: number; y: number }[]>([]);
+  const [pressedKeyId, setPressedKeyId] = useState<string | null>(null);
 
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!svgRef.current) return;
@@ -50,6 +54,8 @@ export const Keyboard: React.FC<KeyboardProps> = ({
     const x = (clickX / rect.width) * 1000;
     const y = (clickY / rect.height) * 350;
     
+    const hitKey = agent.classifyTouch(x, y);
+    setPressedKeyId(hitKey);
     setIsMouseDown(true);
     setDragBuffer([{ x, y }]);
   };
@@ -70,6 +76,7 @@ export const Keyboard: React.FC<KeyboardProps> = ({
   const handleMouseUp = () => {
     if (!isMouseDown) return;
     setIsMouseDown(false);
+    setTimeout(() => setPressedKeyId(null), 120);
 
     if (dragBuffer.length > 0) {
       if (isSmoothingEnabled) {
@@ -100,6 +107,8 @@ export const Keyboard: React.FC<KeyboardProps> = ({
     const x = (clickX / rect.width) * 1000;
     const y = (clickY / rect.height) * 350;
     
+    const hitKey = agent.classifyTouch(x, y);
+    setPressedKeyId(hitKey);
     setIsMouseDown(true);
     setDragBuffer([{ x, y }]);
   };
@@ -135,7 +144,8 @@ export const Keyboard: React.FC<KeyboardProps> = ({
       <svg
         ref={svgRef}
         viewBox="0 0 1000 350"
-        className="w-full h-auto bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden cursor-crosshair shadow-2xl transition-all duration-300"
+        preserveAspectRatio={aspectMode === 'stretch' ? 'none' : 'xMidYMid meet'}
+        className={`w-full ${aspectMode === 'stretch' ? 'h-[235px] sm:h-[255px]' : 'h-auto'} bg-slate-950/80 border border-slate-800 rounded-2xl overflow-hidden cursor-crosshair shadow-2xl transition-all duration-300`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -168,41 +178,56 @@ export const Keyboard: React.FC<KeyboardProps> = ({
             ? polygon.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
             : '';
 
+          const isPressed = pressedKeyId === key.id;
+
           return (
-            <g key={key.id} className="transition-all duration-150">
-              {/* Cell Background */}
-              {showVoronoi && hasPolygon ? (
+            <g key={key.id} className="transition-all duration-100">
+              {/* 1a. Adaptive Voronoi Cell Territory (translucent background contour) */}
+              {showVoronoi && hasPolygon && (
                 <polygon
                   points={pointsStr}
-                  fill={key.id === correctionFlashKey ? 'rgba(220, 38, 38, 0.22)' : 'rgba(30, 41, 59, 0.3)'}
-                  stroke={key.id === correctionFlashKey ? 'rgba(239, 68, 68, 0.9)' : 'rgba(139, 92, 246, 0.3)'}
-                  strokeWidth={key.id === correctionFlashKey ? '2.5' : '1.5'}
-                  className="hover:fill-purple-600/10 hover:stroke-purple-400 transition-all duration-200"
-                />
-              ) : (
-                /* Fallback simple bounding box overlay if Voronoi is off */
-                <rect
-                  x={key.currentX - key.defaultWidth / 2}
-                  y={key.currentY - key.defaultHeight / 2}
-                  width={key.defaultWidth}
-                  height={key.defaultHeight}
-                  rx="6"
-                  fill={key.id === correctionFlashKey ? 'rgba(220, 38, 38, 0.18)' : 'rgba(30, 41, 59, 0.4)'}
-                  stroke={key.id === correctionFlashKey ? 'rgba(239, 68, 68, 0.8)' : 'rgba(255, 255, 255, 0.08)'}
-                  strokeWidth={key.id === correctionFlashKey ? '2' : '1'}
-                  className="hover:fill-slate-800 transition-all duration-200"
+                  fill={key.id === correctionFlashKey ? 'rgba(220, 38, 38, 0.25)' : 'rgba(139, 92, 246, 0.12)'}
+                  stroke={key.id === correctionFlashKey ? 'rgba(239, 68, 68, 0.9)' : 'rgba(139, 92, 246, 0.4)'}
+                  strokeWidth={key.id === correctionFlashKey ? '2.5' : '1.2'}
+                  strokeDasharray="4 3"
                 />
               )}
+
+              {/* 1b. Tactile Physical Keycap (Always visible with proper padding & rounded corners) */}
+              <rect
+                x={key.currentX - key.defaultWidth / 2 + 4}
+                y={key.currentY - key.defaultHeight / 2 + 3}
+                width={Math.max(20, key.defaultWidth - 8)}
+                height={Math.max(20, key.defaultHeight - 6)}
+                rx="8"
+                ry="8"
+                fill={
+                  key.id === correctionFlashKey
+                    ? 'rgba(220, 38, 38, 0.75)'
+                    : isPressed
+                    ? 'rgba(124, 58, 237, 0.9)'
+                    : 'rgba(30, 41, 59, 0.92)'
+                }
+                stroke={
+                  key.id === correctionFlashKey
+                    ? '#ef4444'
+                    : isPressed
+                    ? '#c4b5fd'
+                    : 'rgba(255, 255, 255, 0.16)'
+                }
+                strokeWidth={isPressed ? '2' : '1.2'}
+                className="transition-all duration-75"
+              />
 
               {/* Backspace correction ripple pulse */}
               {key.id === correctionFlashKey && (
                 <circle
                   cx={key.currentX}
                   cy={key.currentY}
-                  r="28"
+                  r="32"
                   fill="none"
-                  stroke="rgba(239, 68, 68, 0.7)"
-                  strokeWidth="2"
+                  stroke="rgba(239, 68, 68, 0.8)"
+                  strokeWidth="2.5"
                   className="key-correction-ripple"
                 />
               )}
@@ -210,12 +235,12 @@ export const Keyboard: React.FC<KeyboardProps> = ({
               {/* Key Character Label */}
               <text
                 x={key.currentX}
-                y={key.currentY + 8}
+                y={key.currentY + 10}
                 textAnchor="middle"
-                fill="#f8fafc"
-                fontSize="24"
-                fontWeight="500"
-                className="pointer-events-none font-sans"
+                fill="#ffffff"
+                fontSize="26"
+                fontWeight="600"
+                className="pointer-events-none font-sans select-none"
               >
                 {isShiftActive ? key.char.toUpperCase() : key.char.toLowerCase()}
               </text>
@@ -274,39 +299,46 @@ export const Keyboard: React.FC<KeyboardProps> = ({
           const h = key.defaultHeight;
           const x = key.currentX - w / 2;
           const y = key.currentY - h / 2;
+          const isPressed = pressedKeyId === key.id;
           
           const isModeKey = key.id === 'mode';
           const isShiftKey = key.id === 'shift';
-          let rectFill = "rgba(15, 23, 42, 0.8)";
-          if (isModeKey) rectFill = "rgba(15, 23, 42, 0.3)";
-          if (isShiftKey && isShiftActive) rectFill = "rgba(139, 92, 246, 0.5)"; // Highlight shift when active
+          const isSpace = key.id === 'space';
           
-          const rectStroke = isModeKey ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.12)";
-          const textColor = isModeKey ? "rgba(255, 255, 255, 0.25)" : (isShiftKey && isShiftActive ? "#ffffff" : "#cbd5e1");
-          const hoverClass = isModeKey ? "" : "hover:fill-slate-800 hover:stroke-slate-600";
-          const keyLabel = isModeKey ? "N/A" : key.char;
+          let rectFill = "rgba(15, 23, 42, 0.9)";
+          if (isPressed) rectFill = "rgba(124, 58, 237, 0.9)";
+          else if (isShiftKey && isShiftActive) rectFill = "rgba(139, 92, 246, 0.75)";
+          else if (isModeKey) rectFill = "rgba(15, 23, 42, 0.5)";
+          
+          const rectStroke = isPressed
+            ? "#c4b5fd"
+            : (isShiftKey && isShiftActive ? "#a78bfa" : "rgba(255, 255, 255, 0.15)");
+          const textColor = (isShiftKey && isShiftActive) || isPressed ? "#ffffff" : (isModeKey ? "#94a3b8" : "#e2e8f0");
+          const keyLabel = isModeKey ? "123" : isSpace ? "SPACE" : key.char;
 
           return (
-            <g key={key.id} className="transition-all duration-200">
+            <g key={key.id} className="transition-all duration-100">
               <rect
-                x={x}
-                y={y}
-                width={w}
-                height={h}
-                rx="10"
+                x={x + 3}
+                y={y + 2}
+                width={Math.max(20, w - 6)}
+                height={Math.max(20, h - 4)}
+                rx="8"
+                ry="8"
                 fill={rectFill}
                 stroke={rectStroke}
-                strokeWidth="1.5"
-                className={`transition-all duration-200 ${hoverClass}`}
+                strokeWidth={isPressed ? "2" : "1.2"}
+                className="transition-all duration-75"
               />
               <text
                 x={key.currentX}
-                y={key.currentY + 6}
+                y={key.currentY + (isSpace ? 6 : 9)}
                 textAnchor="middle"
                 fill={textColor}
-                fontSize="18"
-                fontWeight="500"
-                className="pointer-events-none"
+                fontSize={isSpace ? "18" : "24"}
+                fontWeight="700"
+                letterSpacing={isSpace ? "2" : "normal"}
+                className="pointer-events-none font-sans select-none"
               >
                 {keyLabel}
               </text>

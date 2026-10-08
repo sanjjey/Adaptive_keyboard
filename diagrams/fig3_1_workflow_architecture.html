@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #ffffff;
+    color: #0f172a;
+    padding: 24px;
+    width: 1150px;
+  }
+  .wrapper {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 22px;
+    background: #ffffff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 12px;
+  }
+  .header h2 {
+    font-size: 21px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .header p {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 3px;
+  }
+  
+  /* Main horizontal / vertical workflow */
+  .workflow-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .step-row {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .step-card {
+    flex: 1;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .step-badge {
+    position: absolute;
+    top: -9px;
+    left: 12px;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .b1 { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+  .b2 { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
+  .b3 { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+  .b4 { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+  .step-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-top: 2px;
+    margin-bottom: 6px;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .step-desc {
+    font-size: 11px;
+    color: #475569;
+    line-height: 1.4;
+    flex-grow: 1;
+  }
+
+  .step-desc ul {
+    list-style: none;
+    margin-top: 4px;
+  }
+  .step-desc li {
+    padding-left: 10px;
+    position: relative;
+    margin-bottom: 2px;
+  }
+  .step-desc li::before {
+    content: "›";
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+    color: #64748b;
+  }
+
+  .math-badge {
+    margin-top: 6px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 3px 6px;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 10px;
+    color: #094c72;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  .arrow-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #94a3b8;
+    font-weight: bold;
+    padding: 0 2px;
+  }
+
+  /* Dual Engine Section */
+  .dual-engine-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    background: #f1f5f9;
+    border: 1.5px dashed #94a3b8;
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .sub-engine {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .sub-engine h4 {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .sub-engine.bayesian h4 { color: #0369a1; }
+  .sub-engine.rl h4 { color: #b45309; }
+
+  /* Feedback loop bar */
+  .feedback-loop {
+    background: #0f172a;
+    border-radius: 8px;
+    padding: 10px 16px;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .loop-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #38bdf8;
+  }
+
+  .loop-details {
+    font-size: 11px;
+    color: #cbd5e1;
+  }
+
+  .loop-details strong {
+    color: #fde047;
+  }
+
+  .loop-pill {
+    background: rgba(56, 189, 248, 0.2);
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h2>Figure 3.1: End-to-End Reinforcement Learning System Architecture & Closed-Loop Workflow</h2>
+    <p>Seamless Pipeline from Raw Touch Ingestion to Bayesian Decoding, Policy Gradient Optimization, and Laguerre-Voronoi Tessellation</p>
+  </div>
+
+  <div class="workflow-container">
+    <!-- Top Row: Stages 1 to 4 -->
+    <div class="step-row">
+      <!-- Step 1 -->
+      <div class="step-card">
+        <span class="step-badge b1">Phase 1</span>
+        <div class="step-title">Typing Session & Input</div>
+        <div class="step-desc">
+          <ul>
+            <li>User touches screen at (x, y)</li>
+            <li>Touch timestamp & pressure</li>
+            <li>Typing mode: thumb / index</li>
+          </ul>
+        </div>
+        <div class="math-badge">Input: x &isin; &reals;<sup>2</sup>, &Delta;t</div>
+      </div>
+
+      <div class="arrow-indicator">&rarr;</div>
+
+      <!-- Step 2 -->
+      <div class="step-card">
+        <span class="step-badge b1">Phase 2</span>
+        <div class="step-title">Touch Data Collection</div>
+        <div class="step-desc">
+          <ul>
+            <li>Stream aggregation</li>
+            <li>Viewport coordinate scaling</li>
+            <li>Backspace trigger tracking</li>
+          </ul>
+        </div>
+        <div class="math-badge">Raw Stream: {x<sub>t</sub>, y<sub>t</sub>, t}</div>
+      </div>
+
+      <div class="arrow-indicator">&rarr;</div>
+
+      <!-- Step 3 -->
+      <div class="step-card">
+        <span class="step-badge b2">Phase 3</span>
+        <div class="step-title">Feature Extraction</div>
+        <div class="step-desc">
+          <ul>
+            <li>Normalized centroid offsets</li>
+            <li>Typing cadence & inter-key delay</li>
+            <li>Rolling error history window</li>
+          </ul>
+        </div>
+        <div class="math-badge">s<sub>t</sub> = [&Delta;x, &Delta;y, v, e, ...] &isin; &reals;<sup>7</sup></div>
+      </div>
+
+      <div class="arrow-indicator">&rarr;</div>
+
+      <!-- Step 4 -->
+      <div class="step-card">
+        <span class="step-badge b2">Phase 4</span>
+        <div class="step-title">Dual Inference Engines</div>
+        <div class="step-desc">
+          <ul>
+            <li>Simultaneous language decoding</li>
+            <li>Policy action selection</li>
+            <li>Zero external latency</li>
+          </ul>
+        </div>
+        <div class="math-badge">MAP Score + &pi;<sub>&theta;</sub>(a|s)</div>
+      </div>
+    </div>
+
+    <!-- Dual Engine Processing Area -->
+    <div class="dual-engine-box">
+      <!-- Engine A -->
+      <div class="sub-engine bayesian">
+        <h4><span>&#128269;</span> Bayesian Touch Decoder (MAP)</h4>
+        <div class="step-desc">
+          Fuses spatial Gaussian distance from Laguerre-Voronoi generator site with smoothed English bigram linguistic priors:
+        </div>
+        <div class="math-badge" style="margin-top: 8px;">
+          Score(k) = - (||x - p<sub>k</sub>||<sup>2</sup> - w<sub>k</sub>) / (2&sigma;<sup>2</sup>) + &omega; &middot; log P(k | prev)
+        </div>
+      </div>
+
+      <!-- Engine B -->
+      <div class="sub-engine rl">
+        <h4><span>&#9881;</span> Reinforcement Learning Policy Engine</h4>
+        <div class="step-desc">
+          Continuous policy (Actor-Critic / PPO / DQN) emits micro-adjustments for key centroid coordinates and cell power weights:
+        </div>
+        <div class="math-badge" style="margin-top: 8px;">
+          Action a<sub>t</sub> = [&Delta;x, &Delta;y, &Delta;w] &isin; [-1, 1]<sup>3</sup> &rarr; Grad: &nabla;<sub>&theta;</sub>J = &delta;<sub>t</sub>(a<sub>t</sub> - &mu;<sub>t</sub>)s<sub>t</sub><sup>T</sup>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Row: Stages 5 to 7 -->
+    <div class="step-row">
+      <!-- Step 5 -->
+      <div class="step-card">
+        <span class="step-badge b3">Phase 5</span>
+        <div class="step-title">Adaptive Layout Engine</div>
+        <div class="step-desc">
+          <ul>
+            <li>Laguerre-Voronoi Power Diagram</li>
+            <li>p<sub>k</sub> translated towards user bias</li>
+            <li>Power weight w<sub>k</sub> dynamically tuned</li>
+          </ul>
+        </div>
+        <div class="math-badge">d<sub>pow</sub>(x, p) = ||x - p||<sup>2</sup> - w</div>
+      </div>
+
+      <div class="arrow-indicator">&rarr;</div>
+
+      <!-- Step 6 -->
+      <div class="step-card">
+        <span class="step-badge b3">Phase 6</span>
+        <div class="step-title">Performance Evaluation</div>
+        <div class="step-desc">
+          <ul>
+            <li>Character Error Rate (CER) tracking</li>
+            <li>Words Per Minute (WPM) calculation</li>
+            <li>Layout jitter & stability verification</li>
+          </ul>
+        </div>
+        <div class="math-badge">Metrics: CER, WPM, Jitter</div>
+      </div>
+
+      <div class="arrow-indicator">&rarr;</div>
+
+      <!-- Step 7 -->
+      <div class="step-card">
+        <span class="step-badge b4">Phase 7</span>
+        <div class="step-title">Multi-Objective Reward</div>
+        <div class="step-desc">
+          <ul>
+            <li>Reward correct keystroke (+1.2)</li>
+            <li>Penalize error (-2.0) & Backspace (-3.5)</li>
+            <li>Penalize excessive shift: -&lambda;||&Delta;p||<sup>2</sup></li>
+          </ul>
+        </div>
+        <div class="math-badge">R<sub>t</sub> = R<sub>acc</sub> - R<sub>error</sub> - R<sub>drift</sub></div>
+      </div>
+
+      <div class="arrow-indicator">&rarr;</div>
+
+      <!-- Step 8 -->
+      <div class="step-card">
+        <span class="step-badge b4">Phase 8</span>
+        <div class="step-title">Policy & Credit Update</div>
+        <div class="step-desc">
+          <ul>
+            <li>Temporal Difference error &delta;<sub>t</sub></li>
+            <li>Asynchronous Backspace anti-gradient</li>
+            <li>Incremental on-device adaptation</li>
+          </ul>
+        </div>
+        <div class="math-badge">&delta;<sub>t</sub> = R<sub>t</sub> + &gamma;V(s<sub>t+1</sub>) - V(s<sub>t</sub>)</div>
+      </div>
+    </div>
+
+    <!-- Closed feedback loop strip -->
+    <div class="feedback-loop">
+      <div class="loop-title">
+        <span>&#8635;</span> Continuous Closed-Loop Adaptation Cycle (PPT Slide 9 Architecture Alignment)
+      </div>
+      <div class="loop-details">
+        Feedback from confirmed typing interactions continuously refines keyboard geometry 
+        <strong>without interrupting user muscle memory</strong>.
+      </div>
+      <div class="loop-pill">Zero Server Roundtrip &bull; &lt; 0.7ms Latency</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

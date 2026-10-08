@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #ffffff;
+    color: #0f172a;
+    padding: 24px;
+    width: 1100px;
+  }
+  .wrapper {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 24px;
+    background: #ffffff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 12px;
+  }
+  .header h2 {
+    font-size: 21px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .header p {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 3px;
+  }
+  
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .panel {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .panel-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e293b;
+  }
+
+  .panel-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+  }
+
+  .tag-static { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+  .tag-adapted { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+
+  .diagram-svg-container {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 12px;
+  }
+
+  .panel-desc {
+    font-size: 12px;
+    color: #475569;
+    line-height: 1.45;
+  }
+
+  .formula-card {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 12px 18px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .formula-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .formula-label {
+    font-weight: 600;
+    color: #64748b;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+  .formula-math {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 13px;
+    font-weight: bold;
+    color: #0369a1;
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h2>Figure 3.2: Geometric Partitioning Comparison: Standard Rectilinear Grid vs. Adaptive Laguerre-Voronoi Power Diagram</h2>
+    <p>How Dynamic Centroid Migration and Power Weight Scaling Neutralize User Touch Drift without Distorting Visual Keycaps</p>
+  </div>
+
+  <div class="comparison-grid">
+    <!-- Left: Static Rectilinear Grid -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">(A) Standard Static Keyboard Layout</div>
+        <span class="panel-tag tag-static">Fixed Hitboxes &bull; High Error</span>
+      </div>
+      <div class="diagram-svg-container">
+        <svg width="480" height="260" viewBox="0 0 480 260">
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f1f5f9" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="480" height="260" fill="url(#grid)" />
+
+          <!-- Keys Row 1: E, R, T -->
+          <!-- Key E -->
+          <rect x="50" y="30" width="100" height="80" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+          <text x="100" y="75" font-size="20" font-weight="bold" fill="#334155" text-anchor="middle">E</text>
+          <circle cx="100" cy="70" r="4" fill="#64748b"/>
+
+          <!-- Key R -->
+          <rect x="170" y="30" width="100" height="80" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+          <text x="220" y="75" font-size="20" font-weight="bold" fill="#334155" text-anchor="middle">R</text>
+          <circle cx="220" cy="70" r="4" fill="#64748b"/>
+
+          <!-- Key T -->
+          <rect x="290" y="30" width="100" height="80" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+          <text x="340" y="75" font-size="20" font-weight="bold" fill="#334155" text-anchor="middle">T</text>
+          <circle cx="340" cy="70" r="4" fill="#64748b"/>
+
+          <!-- Keys Row 2: D, F, G -->
+          <!-- Key D -->
+          <rect x="70" y="130" width="100" height="80" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+          <text x="120" y="175" font-size="20" font-weight="bold" fill="#334155" text-anchor="middle">D</text>
+          <circle cx="120" cy="170" r="4" fill="#64748b"/>
+
+          <!-- Key F -->
+          <rect x="190" y="130" width="100" height="80" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+          <text x="240" y="175" font-size="20" font-weight="bold" fill="#334155" text-anchor="middle">F</text>
+          <circle cx="240" cy="170" r="4" fill="#64748b"/>
+
+          <!-- Key G -->
+          <rect x="310" y="130" width="100" height="80" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+          <text x="360" y="175" font-size="20" font-weight="bold" fill="#334155" text-anchor="middle">G</text>
+          <circle cx="360" cy="170" r="4" fill="#64748b"/>
+
+          <!-- User Touch Scatter for intended key 'R' drifting right/downwards -->
+          <!-- Intended key is R, but user thumb lands near boundary or into T / F -->
+          <circle cx="255" cy="85" r="5" fill="#ef4444" fill-opacity="0.8"/>
+          <circle cx="265" cy="78" r="5" fill="#ef4444" fill-opacity="0.8"/>
+          <circle cx="272" cy="95" r="6" fill="#dc2626" fill-opacity="0.9" stroke="#b91c1c" stroke-width="1.5"/>
+          <circle cx="260" cy="105" r="5" fill="#ef4444" fill-opacity="0.8"/>
+          
+          <line x1="272" y1="95" x2="285" y2="125" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <text x="288" y="135" font-size="10" font-weight="bold" fill="#dc2626">Misclassified as 'T' or 'F'!</text>
+
+          <text x="20" y="248" font-size="11" fill="#64748b" font-style="italic">Rigid boundaries force adjacent-key errors under thumb drift</text>
+        </svg>
+      </div>
+      <div class="panel-desc">
+        Under conventional virtual keyboards, hitboxes remain strictly rectangular and static. When a user with rightward thumb drift intends to tap <strong>'R'</strong>, touch clusters fall outside the visual boundary into adjacent keys <strong>'T'</strong> or <strong>'F'</strong>, causing persistent character errors.
+      </div>
+    </div>
+
+    <!-- Right: Adaptive Laguerre-Voronoi Diagram -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">(B) Proposed Laguerre-Voronoi Tessellation</div>
+        <span class="panel-tag tag-adapted">Continuous Policy &bull; 79.4% Error Cut</span>
+      </div>
+      <div class="diagram-svg-container">
+        <svg width="480" height="260" viewBox="0 0 480 260">
+          <defs>
+            <linearGradient id="voronoiGradR" x1="0%" y1="0%" x2="100%" y2="100%">
+              <fill stop-color="#dbeafe" stop-opacity="0.6"/>
+            </linearGradient>
+          </defs>
+          <rect width="480" height="260" fill="#f8fafc" />
+
+          <!-- Voronoi Cells as Polygons behind visual keys -->
+          <!-- Cell E -->
+          <polygon points="20,10 160,10 145,120 40,120" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,2"/>
+          
+          <!-- Cell R: Expanded catchment basin migrating southeast -->
+          <polygon points="160,10 320,10 305,130 185,130 145,120" fill="#eff6ff" stroke="#3b82f6" stroke-width="2.5"/>
+          
+          <!-- Cell T: Slightly shifted/balanced -->
+          <polygon points="320,10 460,10 450,120 305,130" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,2"/>
+
+          <!-- Cell D -->
+          <polygon points="40,120 185,130 170,230 30,230" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,2"/>
+
+          <!-- Cell F: Balanced -->
+          <polygon points="185,130 305,130 330,230 170,230" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,2"/>
+
+          <!-- Cell G -->
+          <polygon points="305,130 450,120 460,230 330,230" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,2"/>
+
+          <!-- Visual Keycaps (Remain Familiar & Fixed) -->
+          <rect x="50" y="30" width="100" height="80" rx="8" fill="#ffffff" fill-opacity="0.8" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="100" y="75" font-size="20" font-weight="bold" fill="#475569" text-anchor="middle">E</text>
+
+          <!-- Keycap R (Visual cap unchanged, but internal site shifted) -->
+          <rect x="170" y="30" width="100" height="80" rx="8" fill="#ffffff" fill-opacity="0.85" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="220" y="75" font-size="20" font-weight="bold" fill="#1e3a8a" text-anchor="middle">R</text>
+
+          <!-- Original center vs Adapted Site -->
+          <circle cx="220" cy="70" r="3.5" fill="#94a3b8"/> <!-- Original -->
+          <circle cx="238" cy="80" r="5" fill="#2563eb"/> <!-- Adapted site p_R -->
+          <!-- Power Weight Radius Circle around p_R -->
+          <circle cx="238" cy="80" r="28" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <line x1="220" y1="70" x2="238" y2="80" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="290" y="30" width="100" height="80" rx="8" fill="#ffffff" fill-opacity="0.8" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="340" y="75" font-size="20" font-weight="bold" fill="#475569" text-anchor="middle">T</text>
+
+          <rect x="70" y="130" width="100" height="80" rx="8" fill="#ffffff" fill-opacity="0.8" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="120" y="175" font-size="20" font-weight="bold" fill="#475569" text-anchor="middle">D</text>
+
+          <rect x="190" y="130" width="100" height="80" rx="8" fill="#ffffff" fill-opacity="0.8" stroke="#cbd5e1" stroke-width="1.5"/>
+          <text x="240" y="175" font-size="20" font-weight="bold" fill="#475569" text-anchor="middle">F</text>
+
+          <!-- Same Touch Scatter now falls perfectly inside Adapted Voronoi Catchment Cell of 'R' -->
+          <circle cx="255" cy="85" r="5" fill="#10b981" fill-opacity="0.9"/>
+          <circle cx="265" cy="78" r="5" fill="#10b981" fill-opacity="0.9"/>
+          <circle cx="272" cy="95" r="6" fill="#059669" fill-opacity="0.95" stroke="#047857" stroke-width="1.5"/>
+          <circle cx="260" cy="105" r="5" fill="#10b981" fill-opacity="0.9"/>
+
+          <text x="280" y="112" font-size="10" font-weight="bold" fill="#047857">&check; Correctly Decoded as 'R'!</text>
+          <text x="20" y="248" font-size="11" fill="#2563eb" font-weight="600">Visual keys stay fixed; underlying Voronoi power cells adapt</text>
+        </svg>
+      </div>
+      <div class="panel-desc">
+        The RL policy migrates generator site <strong>p<sub>R</sub></strong> towards the user's drift vector and expands power weight <strong>w<sub>R</sub></strong>. The resulting Laguerre-Voronoi catchment basin envelops the displaced touches without altering visible keycap positions.
+      </div>
+    </div>
+  </div>
+
+  <div class="formula-card">
+    <div class="formula-item">
+      <span class="formula-label">Laguerre Power Distance</span>
+      <span class="formula-math">d<sub>pow</sub>(x, p<sub>i</sub>) = ||x - p<sub>i</sub>||<sup>2</sup> - w<sub>i</sub></span>
+    </div>
+    <div class="formula-item">
+      <span class="formula-label">Geometric Catchment Basin</span>
+      <span class="formula-math">Cell(i) = {x : d<sub>pow</sub>(x, p<sub>i</sub>) &le; d<sub>pow</sub>(x, p<sub>j</sub>) &forall; j &ne; i}</span>
+    </div>
+    <div class="formula-item">
+      <span class="formula-label">Continuous Policy Action</span>
+      <span class="formula-math">a<sub>t</sub> = [&Delta;x<sub>i</sub>, &Delta;y<sub>i</sub>, &Delta;w<sub>i</sub>] &sim; &pi;<sub>&theta;</sub>(a | s<sub>t</sub>)</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

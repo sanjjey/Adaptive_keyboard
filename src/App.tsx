@@ -984,50 +984,51 @@ export default function App() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Premium Header Banner */}
-      <header className="flex justify-between items-center py-3 px-6 bg-slate-950/80 border-b border-slate-900 sticky top-0 z-50 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-xl shadow-lg shadow-purple-500/20 text-white">
-            <KeyboardIcon size={24} />
+      <header className="flex justify-between items-center py-2 px-3 sm:py-3 sm:px-6 bg-slate-950/80 border-b border-slate-900 sticky top-0 z-50 backdrop-blur-md">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="p-1.5 sm:p-2.5 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-lg sm:rounded-xl shadow-lg shadow-purple-500/20 text-white shrink-0">
+            <KeyboardIcon size={18} className="sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              Antigravity Adaptive Keyboard Lab
-              <span className="text-[10px] font-mono font-normal tracking-wide px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                Actor-Critic RL
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-xl font-bold tracking-tight text-white flex items-center gap-1.5 sm:gap-2 truncate">
+              <span>Adaptive Keyboard Lab</span>
+              <span className="hidden xs:inline-block text-[9px] sm:text-[10px] font-mono font-normal tracking-wide px-1.5 sm:px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                RL
               </span>
             </h1>
-            <p className="text-xs text-slate-400 font-medium">
+            <p className="text-xs text-slate-400 font-medium hidden md:block">
               Reinforcement Learning Virtual Layout Optimization & Bayesian Touch Decoding
             </p>
           </div>
         </div>
 
         {/* Tab Switcher & Status */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           <div className="tab-switcher-box">
             <button
               onClick={() => setActiveTab('studio')}
-              className={`tab-nav-btn ${activeTab === 'studio' ? 'active-studio' : ''}`}
+              className={`tab-nav-btn ${activeTab === 'studio' ? 'active-studio' : ''} text-xs py-1 px-2 sm:px-3`}
             >
-              <FlaskConical size={14} />
-              <span>RL Lab & Studio</span>
+              <FlaskConical size={13} />
+              <span className="hidden sm:inline">RL Lab & Studio</span>
+              <span className="sm:hidden">Studio</span>
             </button>
             <button
               onClick={() => {
                 setActiveTab('whatsapp');
                 setDeviceMode('mobile');
               }}
-              className={`tab-nav-btn ${activeTab === 'whatsapp' ? 'active-whatsapp' : ''}`}
+              className={`tab-nav-btn ${activeTab === 'whatsapp' ? 'active-whatsapp' : ''} text-xs py-1 px-2 sm:px-3`}
             >
-              <MessageCircle size={14} />
-              <span>WhatsApp Simulator</span>
-              <span className="tab-nav-badge">
+              <MessageCircle size={13} />
+              <span>WhatsApp</span>
+              <span className="tab-nav-badge hidden sm:inline">
                 Phone
               </span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-900/60 rounded-lg border border-slate-800">
+          <div className="hidden md:flex items-center gap-2 px-2.5 py-1 bg-slate-900/60 rounded-lg border border-slate-800">
             <span className="dot dot-green"></span>
             <span className="text-[11px] font-semibold text-emerald-400 font-mono">
               RL CONVERGING
@@ -1041,8 +1042,8 @@ export default function App() {
         /* ==============================================================
            TAB 2: DEDICATED WHATSAPP MESSENGER SIMULATOR (PHONE LAYOUT)
            ============================================================== */
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6">
-          <div className="mb-4 text-center">
+        <main className="flex-1 w-full max-w-7xl mx-auto px-0 sm:px-4 py-0 sm:py-6">
+          <div className="mb-4 text-center wa-intro-banner">
             <h2 className="text-lg font-bold text-white flex items-center justify-center gap-2">
               <MessageCircle size={18} className="text-[#25d366]" /> WhatsApp Live Typing Testbed
             </h2>
